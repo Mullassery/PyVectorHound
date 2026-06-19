@@ -232,7 +232,10 @@ Python Wrapper
 
 ## PyHound vs Observability Tools
 
-PyHound is **not** a replacement for observability platforms like Phoenix, Arize, or Helicone.
+PyHound currently focuses on **diagnostics**. Future versions (v0.2+) will include observability features, making it a complete replacement for Phoenix, Arize, and Helicone.
+
+### Today (v0.1)
+Use PyHound for diagnostics. Optionally pair with Phoenix/Arize for monitoring dashboards.
 
 | Tool | Purpose | Answers |
 |------|---------|---------|
@@ -241,7 +244,10 @@ PyHound is **not** a replacement for observability platforms like Phoenix, Arize
 | **PyHound** | Guide solutions | "How do I fix it?" |
 | **PyHound** | Measure results | "Did my fix work?" |
 
-**Ideal setup:** Use both—observability alerts you, PyHound diagnoses and fixes.
+### Future (v0.2+)
+PyHound will include built-in observability (dashboards, alerting, tracing). Single platform for diagnostics + monitoring.
+
+**Roadmap:** v0.2 adds tracing + metrics export, v0.3 adds dashboard + alerting.
 
 ## Common Use Cases
 
