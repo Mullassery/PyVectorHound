@@ -196,8 +196,8 @@ A: Yes. It's designed for production monitoring. Overhead is minimal (<1ms per o
 **Q: Does PyHound require Rust knowledge?**  
 A: No. PyHound is pure Python to use. Rust is only for building from source.
 
-**Q: What's the difference between PyHound and Phoenix/Arize?**  
-A: PyHound diagnoses WHY retrieval failed (root cause + fixes). Phoenix/Arize monitor THAT it failed (observability). Use both together.
+**Q: Should I use PyHound instead of Phoenix/Arize?**  
+A: Yes. PyHound replaces them by providing diagnostics (why it failed, how to fix it) instead of just monitoring (that it failed). Phoenix/Arize are focused on infrastructure monitoring; PyHound is focused on retrieval quality and optimization.
 
 ## Supported Vector Databases
 
@@ -230,24 +230,20 @@ Python Wrapper
 - Embeddable everywhere (C FFI, PyO3)
 - Single binary, zero dependencies
 
-## PyHound vs Observability Tools
+## Why PyHound Over Phoenix/Arize?
 
-PyHound currently focuses on **diagnostics**. Future versions (v0.2+) will include observability features, making it a complete replacement for Phoenix, Arize, and Helicone.
+PyHound replaces observability platforms by going deeper: it doesn't just tell you something is broken, it explains why and how to fix it.
 
-### Today (v0.1)
-Use PyHound for diagnostics. Optionally pair with Phoenix/Arize for monitoring dashboards.
+| Question | Phoenix/Arize | PyHound |
+|----------|---------------|---------|
+| Is retrieval broken? | Yes | Yes (+ metrics) |
+| Why is it broken? | No | Yes (root cause) |
+| Which component failed? | No | Yes (component isolation) |
+| How do I fix it? | No | Yes (ranked recommendations with ROI) |
+| Did my fix work? | No | Yes (before/after comparison) |
+| What model should I use? | No | Yes (comparison with cost analysis) |
 
-| Tool | Purpose | Answers |
-|------|---------|---------|
-| **Phoenix/Arize** | Monitor what's happening | "Is something broken?" |
-| **PyHound** | Diagnose problems | "What's broken and why?" |
-| **PyHound** | Guide solutions | "How do I fix it?" |
-| **PyHound** | Measure results | "Did my fix work?" |
-
-### Future (v0.2+)
-PyHound will include built-in observability (dashboards, alerting, tracing). Single platform for diagnostics + monitoring.
-
-**Roadmap:** v0.2 adds tracing + metrics export, v0.3 adds dashboard + alerting.
+**Bottom line:** Phoenix/Arize tell you something's wrong. PyHound tells you what to do about it.
 
 ## Common Use Cases
 
