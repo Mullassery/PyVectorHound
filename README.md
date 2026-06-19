@@ -251,11 +251,11 @@ PyHound replaces observability platforms by going deeper: it doesn't just tell y
 
 PyHound is 3-10x faster than competitors by eliminating cloud latency and Python bottlenecks.
 
-| Metric | PyHound | Phoenix | Arize | Evidently | Winner |
-|--------|---------|---------|-------|-----------|--------|
-| Diagnosis Latency (100k docs) | 45ms | 200ms | 250ms | 150ms | PyHound (4-5x faster) |
-| Per-Embedding Quality Score | 0.8ms | - | - | 8.5ms | PyHound (10x faster) |
-| Corpus Analysis (1M docs) | 2.3s | - | - | 45s | PyHound (19x faster) |
+| Metric | Phoenix | Arize | Evidently | PyHound |
+|--------|---------|-------|-----------|---------|
+| Diagnosis Latency (100k docs) | 200ms | 250ms | 150ms | 45ms |
+| Per-Embedding Quality Score | - | - | 8.5ms | 0.8ms |
+| Corpus Analysis (1M docs) | - | - | 45s | 2.3s |
 
 **Why so fast?**
 - Rust core, no Python GIL
@@ -265,19 +265,19 @@ PyHound is 3-10x faster than competitors by eliminating cloud latency and Python
 
 ## Feature Comparison Matrix
 
-| Feature | PyHound | Phoenix | Arize | Evidently | Ragas |
-|---------|---------|---------|-------|-----------|-------|
-| Component Isolation | Yes | No | No | No | No |
-| Root Cause Analysis | Yes | No | No | No | No |
-| Recommendations | Yes | No | No | No | No |
-| Cost-Quality Analysis | Yes | No | No | No | No |
-| Model Comparison | Yes | No | No | No | No |
-| Drift Detection | Yes | Yes | Yes | Yes | No |
-| Real-time Scoring | Yes | No | No | No | No |
-| Hybrid Retrieval Focus | Yes | No | No | No | Yes |
-| Local Deployment | Yes | No | No | Yes | Yes |
-| Open Source | Yes | Yes | No | Yes | Yes |
-| No Vendor Lock-in | Yes | Yes | No | Yes | Yes |
+| Feature | Phoenix | Arize | Evidently | Ragas | PyHound |
+|---------|---------|-------|-----------|-------|---------|
+| Component Isolation | No | No | No | No | Yes |
+| Root Cause Analysis | No | No | No | No | Yes |
+| Recommendations | No | No | No | No | Yes |
+| Cost-Quality Analysis | No | No | No | No | Yes |
+| Model Comparison | No | No | No | No | Yes |
+| Drift Detection | Yes | Yes | Yes | No | Yes |
+| Real-time Scoring | No | No | No | No | Yes |
+| Hybrid Retrieval Focus | No | No | No | Yes | Yes |
+| Local Deployment | No | No | Yes | Yes | Yes |
+| Open Source | Yes | No | Yes | Yes | Yes |
+| No Vendor Lock-in | Yes | No | Yes | Yes | Yes |
 
 **Key Wins:**
 - Only tool with component isolation
