@@ -1,6 +1,6 @@
 # PyHound
 
-[![PyPI version](https://img.shields.io/badge/PyPI-0.1.1-blue.svg)](https://pypi.org/project/pyhound/)
+[![PyPI version](https://img.shields.io/badge/PyPI-pyhound--core%200.1.0-blue.svg)](https://pypi.org/project/pyhound-core/)
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8+-green.svg)](https://www.python.org/downloads/)
 [![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/Mullassery/pyhound?style=social)](https://github.com/Mullassery/pyhound)
