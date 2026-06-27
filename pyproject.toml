@@ -3,7 +3,7 @@ requires = ["setuptools>=65.0", "wheel", "maturin>=1.0,<2.0"]
 build-backend = "maturin.build"
 
 [project]
-name = "pyvectorsearch"
+name = "pyvectorhound"
 version = "0.1.0"
 description = "Diagnose vector search problems in RAG/LLM systems. Hunt down why retrieval fails — embedding quality, vector search, BM25, reranker analysis."
 readme = "README.md"
@@ -53,14 +53,14 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Mullassery/pyhound"
-Documentation = "https://github.com/Mullassery/pyhound/tree/main/docs"
-Repository = "https://github.com/Mullassery/pyhound.git"
-"Bug Tracker" = "https://github.com/Mullassery/pyhound/issues"
-Changelog = "https://github.com/Mullassery/pyhound/releases"
+Homepage = "https://github.com/Mullassery/pyvectorhound"
+Documentation = "https://github.com/Mullassery/pyvectorhound/tree/main/docs"
+Repository = "https://github.com/Mullassery/pyvectorhound.git"
+"Bug Tracker" = "https://github.com/Mullassery/pyvectorhound/issues"
+Changelog = "https://github.com/Mullassery/pyvectorhound/releases"
 
 [tool.maturin]
-module-name = "pyvectorsearch._core"
+module-name = "pyvectorhound._core"
 features = ["pyo3/extension-module"]
 
 [tool.pytest.ini_options]

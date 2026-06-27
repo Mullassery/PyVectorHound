@@ -1,13 +1,13 @@
-# PyVectorSearch
+# PyVectorhound
 
-[![PyPI version](https://img.shields.io/badge/PyPI-pyvectorsearch%200.1.0-blue.svg)](https://pypi.org/project/pyvectorsearch/)
+[![PyPI version](https://img.shields.io/badge/PyPI-pyvectorhound%200.1.0-blue.svg)](https://pypi.org/project/pyvectorhound/)
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8+-green.svg)](https://www.python.org/downloads/)
 [![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/Mullassery/pyvectorsearch?style=social)](https://github.com/Mullassery/pyvectorsearch)
+[![GitHub stars](https://img.shields.io/github/stars/Mullassery/pyvectorhound?style=social)](https://github.com/Mullassery/pyvectorhound)
 
 **Hunt down retrieval problems. Fix them fast.**
 
-PyVectorSearch diagnoses **why** your RAG retrieval is failing—not just that it failed. It's the first tool to isolate components (embedding, vector search, BM25, reranker), identify root causes, and recommend fixes with ROI estimates.
+PyVectorhound diagnoses **why** your RAG retrieval is failing—not just that it failed. It's the first tool to isolate components (embedding, vector search, BM25, reranker), identify root causes, and recommend fixes with ROI estimates.
 
 ## Why Star This?
 
@@ -17,11 +17,11 @@ PyVectorSearch diagnoses **why** your RAG retrieval is failing—not just that i
 - **No vendor lock-in** — MIT licensed, 5 open-source databases, local deployment
 - **Production-ready** — Used for RAG/LLM diagnostics, not experimental
 
-**Phoenix/Arize tell you something's wrong. PyVectorSearch tells you what to do about it.**
+**Phoenix/Arize tell you something's wrong. PyVectorhound tells you what to do about it.**
 
 ## Quick Comparison
 
-| Metric | PyVectorSearch | Phoenix | Arize | Evidently |
+| Metric | PyVectorhound | Phoenix | Arize | Evidently |
 |--------|---------|---------|-------|-----------|
 | Diagnosis Latency | **45ms** | 200ms | 250ms | 150ms |
 | Component Isolation | **Yes** | No | No | No |
@@ -29,7 +29,7 @@ PyVectorSearch diagnoses **why** your RAG retrieval is failing—not just that i
 | Recommendations | **Yes** | No | No | No |
 | Cost per month | **Free** | $$$ | $$$ | Free |
 
-## What Problem Does PyVectorSearch Solve?
+## What Problem Does PyVectorhound Solve?
 
 Your RAG system's retrieval quality degraded. You know something is wrong, but not what:
 - Is the embedding model bad?
@@ -37,11 +37,11 @@ Your RAG system's retrieval quality degraded. You know something is wrong, but n
 - Is keyword search missing matches?
 - Is the reranker miscalibrated?
 
-PyVectorSearch isolates exactly which component failed and explains how to fix it.
+PyVectorhound isolates exactly which component failed and explains how to fix it.
 
-## When Should You Use PyVectorSearch?
+## When Should You Use PyVectorhound?
 
-Use PyVectorSearch when:
+Use PyVectorhound when:
 - Retrieval quality drops unexpectedly
 - You're choosing between embedding models
 - You want to understand retrieval performance
@@ -60,18 +60,18 @@ Use PyVectorSearch when:
 
 ## 5-Minute Setup
 
-**Get PyVectorSearch running in under 5 minutes**
+**Get PyVectorhound running in under 5 minutes**
 
-### Step 1: Install PyVectorSearch (30 seconds)
+### Step 1: Install PyVectorhound (30 seconds)
 
 ```bash
-pip install pyvectorsearch
+pip install pyvectorhound
 ```
 
 OR
 
 ```bash
-uv add pyvectorsearch
+uv add pyvectorhound
 ```
 
 ### Step 2: Set Up a Vector Database (Local Example)
@@ -105,12 +105,12 @@ client.upsert(
 )
 ```
 
-### Step 4: Run PyVectorSearch Diagnosis
+### Step 4: Run PyVectorhound Diagnosis
 
 ```python
-from pyvectorsearch import Hound
+from pyvectorhound import Hound
 
-# Initialize PyVectorSearch
+# Initialize PyVectorhound
 hound = Hound(db="qdrant", endpoint="localhost:6333")
 
 # Diagnose retrieval quality
@@ -126,11 +126,11 @@ print(diagnosis.hunt())
 
 ### Example Output
 
-PyVectorSearch tells you exactly what's wrong in plain English:
+PyVectorhound tells you exactly what's wrong in plain English:
 
 ```
 =======================================================
-              PyVectorSearch Diagnosis Report
+              PyVectorhound Diagnosis Report
 =======================================================
 
 Query: "quantum computing"
@@ -200,7 +200,7 @@ RECOMMENDATIONS (Ranked by Impact)
 
 ## Star If This Helps!
 
-If PyVectorSearch solves your retrieval debugging problem, consider giving it a star ⭐ on GitHub. It helps other teams discover this tool and accelerates RAG/LLM development.
+If PyVectorhound solves your retrieval debugging problem, consider giving it a star ⭐ on GitHub. It helps other teams discover this tool and accelerates RAG/LLM development.
 
 ## Understanding the Output
 
@@ -212,14 +212,14 @@ If PyVectorSearch solves your retrieval debugging problem, consider giving it a 
 
 ## FAQ
 
-**Q: Do I need to set up PyVectorSearch specially?**  
+**Q: Do I need to set up PyVectorhound specially?**  
 A: No. Install via pip, point it at your existing vector database, and run diagnosis.
 
-**Q: Can PyVectorSearch work with my existing vector database?**  
+**Q: Can PyVectorhound work with my existing vector database?**  
 A: Yes. Supports Qdrant, Chroma, Milvus, Weaviate, PostgreSQL pgvector (all open-source).
 
-**Q: Does PyVectorSearch modify my data?**  
-A: No. PyVectorSearch is read-only. It analyzes but never modifies your vectors or documents.
+**Q: Does PyVectorhound modify my data?**  
+A: No. PyVectorhound is read-only. It analyzes but never modifies your vectors or documents.
 
 **Q: What if I don't have ground truth (expected_docs)?**  
 A: Ground truth is optional. Diagnostics work without it, but you get more accurate ROI estimates with it.
@@ -227,14 +227,14 @@ A: Ground truth is optional. Diagnostics work without it, but you get more accur
 **Q: How long does a diagnosis take?**  
 A: Typically 45ms for small queries. Larger corpus analysis may take seconds.
 
-**Q: Can I use PyVectorSearch in production?**  
+**Q: Can I use PyVectorhound in production?**  
 A: Yes. It's designed for production monitoring. Overhead is minimal (<1ms per operation).
 
-**Q: Does PyVectorSearch require Rust knowledge?**  
-A: No. PyVectorSearch is pure Python to use. Rust is only for building from source.
+**Q: Does PyVectorhound require Rust knowledge?**  
+A: No. PyVectorhound is pure Python to use. Rust is only for building from source.
 
-**Q: Should I use PyVectorSearch instead of Phoenix/Arize?**  
-A: Yes. PyVectorSearch replaces them by providing diagnostics (why it failed, how to fix it) instead of just monitoring (that it failed). Phoenix/Arize are focused on infrastructure monitoring; PyVectorSearch is focused on retrieval quality and optimization.
+**Q: Should I use PyVectorhound instead of Phoenix/Arize?**  
+A: Yes. PyVectorhound replaces them by providing diagnostics (why it failed, how to fix it) instead of just monitoring (that it failed). Phoenix/Arize are focused on infrastructure monitoring; PyVectorhound is focused on retrieval quality and optimization.
 
 ## Supported Vector Databases
 
@@ -270,11 +270,11 @@ Python Wrapper
 - Embeddable everywhere (C FFI, PyO3)
 - Single binary, zero dependencies
 
-## Why PyVectorSearch Over Phoenix/Arize?
+## Why PyVectorhound Over Phoenix/Arize?
 
-PyVectorSearch replaces observability platforms by going deeper: it doesn't just tell you something is broken, it explains why and how to fix it.
+PyVectorhound replaces observability platforms by going deeper: it doesn't just tell you something is broken, it explains why and how to fix it.
 
-| Question | Phoenix/Arize | PyVectorSearch |
+| Question | Phoenix/Arize | PyVectorhound |
 |----------|---------------|---------|
 | Is retrieval broken? | Yes | Yes (+ metrics) |
 | Why is it broken? | No | Yes (root cause) |
@@ -283,13 +283,13 @@ PyVectorSearch replaces observability platforms by going deeper: it doesn't just
 | Did my fix work? | No | Yes (before/after comparison) |
 | What model should I use? | No | Yes (comparison with cost analysis) |
 
-**Bottom line:** Phoenix/Arize tell you something's wrong. PyVectorSearch tells you what to do about it.
+**Bottom line:** Phoenix/Arize tell you something's wrong. PyVectorhound tells you what to do about it.
 
 ## Speed Comparison
 
-PyVectorSearch is 3-10x faster than competitors by eliminating cloud latency and Python bottlenecks.
+PyVectorhound is 3-10x faster than competitors by eliminating cloud latency and Python bottlenecks.
 
-| Metric | Phoenix | Arize | Evidently | PyVectorSearch |
+| Metric | Phoenix | Arize | Evidently | PyVectorhound |
 |--------|---------|-------|-----------|---------|
 | Diagnosis Latency (100k docs) | 200ms | 250ms | 150ms | 45ms |
 | Per-Embedding Quality Score | - | - | 8.5ms | 0.8ms |
@@ -303,7 +303,7 @@ PyVectorSearch is 3-10x faster than competitors by eliminating cloud latency and
 
 ## Feature Comparison Matrix
 
-| Feature | Phoenix | Arize | Evidently | Ragas | PyVectorSearch |
+| Feature | Phoenix | Arize | Evidently | Ragas | PyVectorhound |
 |---------|---------|-------|-----------|-------|---------|
 | Component Isolation | No | No | No | No | Yes |
 | Root Cause Analysis | No | No | No | No | Yes |
@@ -382,7 +382,7 @@ pip install chromadb
 
 ```python
 # Make sure you have embeddings in your database
-# PyVectorSearch only works with existing vector data
+# PyVectorhound only works with existing vector data
 
 # Verify database has data:
 from qdrant_client import QdrantClient
@@ -395,7 +395,7 @@ print(f"Total vectors: {collection_info.points_count}")
 
 | Issue | Solution |
 |-------|----------|
-| "Collection not found" | Create collection first before running PyVectorSearch |
+| "Collection not found" | Create collection first before running PyVectorhound |
 | "No query results" | Ensure your database has documents indexed |
 | "Slow diagnostics" | For large corpora (>1M docs), diagnostics take longer. Use smaller top_k |
 | "Missing expected_docs" | Ground truth is optional. Diagnostics still work without it |
@@ -403,7 +403,7 @@ print(f"Total vectors: {collection_info.points_count}")
 ## API Quick Reference
 
 ```python
-from pyvectorsearch import Hound
+from pyvectorhound import Hound
 
 hound = Hound(db="qdrant", endpoint="localhost:6333")
 
@@ -433,7 +433,7 @@ scorer.trend_analysis(...)    # Historical trends
 
 ## Documentation
 
-- [ARCHITECTURE.md](docs/ARCHITECTURE.md) — How PyVectorSearch works internally
+- [ARCHITECTURE.md](docs/ARCHITECTURE.md) — How PyVectorhound works internally
 - [CONTRIBUTING.md](CONTRIBUTING.md) — How to contribute
 - [BENCHMARKS_AND_COMPARISON.md](BENCHMARKS_AND_COMPARISON.md) — Performance vs competitors
 - [docs/GUIDE.md](docs/GUIDE.md) — Full user guide with examples
@@ -461,7 +461,7 @@ Measured on single machine (8 cores, 16GB RAM):
 - Evidently: 150ms diagnosis (3.3x slower)
 - Arize: 250ms diagnosis (5.5x slower)
 
-**Why PyVectorSearch is faster:**
+**Why PyVectorhound is faster:**
 - Rust core, not Python (no GIL)
 - Local execution (no network latency)
 - Optimized metric algorithms
@@ -477,7 +477,7 @@ Measured on single machine (8 cores, 16GB RAM):
 
 MIT License — See [LICENSE](LICENSE) for details.
 
-PyVectorSearch is free for commercial use.
+PyVectorhound is free for commercial use.
 
 ## Contributing
 
@@ -492,15 +492,15 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines
 
 ## Next Steps
 
-1. **Try the Quick Start** — Get PyVectorSearch working with Qdrant in 5 minutes
+1. **Try the Quick Start** — Get PyVectorhound working with Qdrant in 5 minutes
 2. **Read Use Cases** — See which scenario matches your problem
-3. **Check Benchmarks** — Understand PyVectorSearch's performance vs competitors
+3. **Check Benchmarks** — Understand PyVectorhound's performance vs competitors
 4. **Explore Roadmap** — See what's planned (v0.2-v1.0)
 
 ## Support
 
-- GitHub Discussions: https://github.com/Mullassery/pyvectorsearch/discussions
-- Issues: https://github.com/Mullassery/pyvectorsearch/issues
+- GitHub Discussions: https://github.com/Mullassery/pyvectorhound/discussions
+- Issues: https://github.com/Mullassery/pyvectorhound/issues
 - Email: mullassery@gmail.com
 
 ## Authors

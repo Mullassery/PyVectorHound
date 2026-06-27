@@ -5,10 +5,10 @@ __author__ = "Georgi Mammen Mullassery"
 __email__ = "mullassery@gmail.com"
 __license__ = "MIT"
 
-from pyvectorsearch.hound import Hound
-from pyvectorsearch.diagnosis import Diagnosis
-from pyvectorsearch.comparison import ModelComparison
-from pyvectorsearch.scorer import QualityScorer
+from pyvectorhound.hound import Hound
+from pyvectorhound.diagnosis import Diagnosis
+from pyvectorhound.comparison import ModelComparison
+from pyvectorhound.scorer import QualityScorer
 
 __all__ = [
     "Hound",
