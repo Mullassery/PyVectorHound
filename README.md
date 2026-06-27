@@ -252,7 +252,7 @@ Add more databases by implementing the `VectorDB` protocol.
 ## Architecture
 
 ```
-Rust Core (pyhound_core)
+Rust Core (pyvectorhound._core)
 - Embedding quality metrics
 - Pipeline analysis
 - Drift detection
@@ -260,7 +260,7 @@ Rust Core (pyhound_core)
   |
   (PyO3 bindings)
   |
-Python Wrapper
+Python Wrapper (pyvectorhound)
 - Hound class (main API)
 ```
 
