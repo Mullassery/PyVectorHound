@@ -4,7 +4,7 @@ build-backend = "maturin.build"
 
 [project]
 name = "pyvectorhound"
-version = "0.1.0"
+version = "1.0.0"
 description = "Diagnostic tool for vector search failures in RAG and LLM systems. Evaluate embedding quality, analyze vector search rank correlation, benchmark BM25 vs semantic search, profile reranker performance. Identify root cause of retrieval failures."
 readme = "README.md"
 requires-python = ">=3.8"
