@@ -14,7 +14,7 @@ pub fn compute_isotropy(embeddings: &[Vec<f32>]) -> f32 {
     }
 
     let n = embeddings.len();
-    let d = embeddings[0].len();
+    let _d = embeddings[0].len();
 
     if n < 2 {
         return 0.0;
