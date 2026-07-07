@@ -5,18 +5,44 @@ build-backend = "maturin.build"
 [project]
 name = "pyvectorhound"
 version = "0.1.0"
-description = "Diagnose vector search problems in RAG/LLM systems. Hunt down why retrieval fails — embedding quality, vector search, BM25, reranker analysis."
+description = "Diagnostic tool for vector search failures in RAG and LLM systems. Evaluate embedding quality, analyze vector search rank correlation, benchmark BM25 vs semantic search, profile reranker performance. Identify root cause of retrieval failures."
 readme = "README.md"
 requires-python = ">=3.8"
 license = {text = "MIT"}
 authors = [
     {name = "Georgi Mammen Mullassery", email = "mullassery@gmail.com"}
 ]
-keywords = ["rag", "llm", "retrieval", "diagnostics", "embedding", "vector-search", "debugging"]
+keywords = [
+    "rag",
+    "retrieval-augmented-generation",
+    "vector-search",
+    "embedding",
+    "semantic-search",
+    "llm",
+    "large-language-models",
+    "information-retrieval",
+    "search-ranking",
+    "evaluation-metrics",
+    "bm25",
+    "reranking",
+    "debugging",
+    "diagnostics",
+    "nlp",
+    "natural-language-processing",
+    "similarity-search",
+    "faiss",
+    "elasticsearch",
+    "pinecone",
+    "milvus",
+    "ai-debugging"
+]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
@@ -26,6 +52,8 @@ classifiers = [
     "Programming Language :: Rust",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing",
+    "Topic :: Scientific/Engineering :: Information Analysis",
 ]
 
 dependencies = [
@@ -53,11 +81,13 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Mullassery/pyvectorhound"
-Documentation = "https://github.com/Mullassery/pyvectorhound/tree/main/docs"
-Repository = "https://github.com/Mullassery/pyvectorhound.git"
-"Bug Tracker" = "https://github.com/Mullassery/pyvectorhound/issues"
-Changelog = "https://github.com/Mullassery/pyvectorhound/releases"
+Homepage = "https://github.com/Mullassery/Pyvectorhound"
+Repository = "https://github.com/Mullassery/Pyvectorhound"
+Documentation = "https://github.com/Mullassery/Pyvectorhound#readme"
+"Bug Tracker" = "https://github.com/Mullassery/Pyvectorhound/issues"
+Changelog = "https://github.com/Mullassery/Pyvectorhound/releases"
+"Source Code" = "https://github.com/Mullassery/Pyvectorhound/tree/main"
+Discussions = "https://github.com/Mullassery/Pyvectorhound/discussions"
 
 [tool.maturin]
 module-name = "pyvectorhound._core"
