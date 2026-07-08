@@ -49,7 +49,11 @@ pub fn compute_isotropy(embeddings: &[Vec<f32>]) -> f32 {
         }
     }
 
-    let avg_sim = if count > 0 { sum_sim / count as f32 } else { 0.0 };
+    let avg_sim = if count > 0 {
+        sum_sim / count as f32
+    } else {
+        0.0
+    };
 
     // Isotropy is inversely related to average similarity
     // Lower similarity = higher isotropy
@@ -186,8 +190,8 @@ pub fn detect_drift(baseline: &[Vec<f32>], current: &[Vec<f32>]) -> f32 {
     // Compute relative drift (normalized to 0..1)
     let isotropy_drift = (baseline_isotropy - current_isotropy).abs() / (1.0 + baseline_isotropy);
     let coverage_drift = (baseline_coverage - current_coverage).abs() / (1.0 + baseline_coverage);
-    let distinctiveness_drift =
-        (baseline_distinctiveness - current_distinctiveness).abs() / (1.0 + baseline_distinctiveness);
+    let distinctiveness_drift = (baseline_distinctiveness - current_distinctiveness).abs()
+        / (1.0 + baseline_distinctiveness);
 
     // Average drift across metrics
     (isotropy_drift + coverage_drift + distinctiveness_drift) / 3.0
@@ -205,8 +209,8 @@ pub struct RetrievalMetrics {
 
 /// Compute precision, recall, and F1 score
 pub fn compute_retrieval_metrics(
-    retrieved: &[usize],        // Retrieved document indices (in order)
-    relevant: &[usize],         // Relevant document indices (ground truth)
+    retrieved: &[usize], // Retrieved document indices (in order)
+    relevant: &[usize],  // Relevant document indices (ground truth)
     top_k: usize,
 ) -> RetrievalMetrics {
     let retrieved_set: std::collections::HashSet<_> = retrieved.iter().cloned().collect();
@@ -255,7 +259,11 @@ pub fn compute_retrieval_metrics(
         .map(|i| 1.0 / (i as f32 + 1.0).log2().max(1.0))
         .sum();
 
-    let ndcg = if ideal_dcg > 0.0 { dcg / ideal_dcg } else { 0.0 };
+    let ndcg = if ideal_dcg > 0.0 {
+        dcg / ideal_dcg
+    } else {
+        0.0
+    };
 
     RetrievalMetrics {
         precision: precision.max(0.0).min(1.0),
@@ -301,7 +309,10 @@ mod tests {
         ];
         let cov_diverse = compute_coverage(&diverse);
         let cov_clustered = compute_coverage(&clustered);
-        assert!(cov_diverse > cov_clustered, "diverse ({cov_diverse}) should exceed clustered ({cov_clustered})");
+        assert!(
+            cov_diverse > cov_clustered,
+            "diverse ({cov_diverse}) should exceed clustered ({cov_clustered})"
+        );
         assert!(cov_diverse > 0.3, "diverse coverage was {cov_diverse}");
     }
 
@@ -312,7 +323,7 @@ mod tests {
         let metrics = compute_retrieval_metrics(&retrieved, &relevant, 3);
 
         assert_eq!(metrics.precision, 2.0 / 3.0); // 2 out of 3 retrieved are relevant
-        assert_eq!(metrics.recall, 2.0 / 3.0);   // 2 out of 3 relevant are retrieved
+        assert_eq!(metrics.recall, 2.0 / 3.0); // 2 out of 3 relevant are retrieved
         assert!(metrics.f1_score > 0.0);
     }
 }

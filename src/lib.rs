@@ -4,13 +4,13 @@
 
 mod metrics;
 
+use metrics::{
+    compute_coverage, compute_distinctiveness, compute_isotropy, compute_retrieval_metrics,
+    detect_drift,
+};
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use pyo3::Bound;
-use metrics::{
-    compute_coverage, compute_distinctiveness, detect_drift, compute_isotropy,
-    compute_retrieval_metrics,
-};
 
 /// Compute isotropy of embeddings (vector space utilization)
 #[pyfunction]
@@ -71,7 +71,9 @@ fn py_compute_quality_score(embeddings: Vec<Vec<f32>>) -> PyResult<f32> {
     let distinctiveness = compute_distinctiveness(&embeddings);
 
     // Composite score: weighted average
-    let quality = (isotropy * 0.4 + coverage * 0.3 + distinctiveness * 0.3).max(0.0).min(1.0);
+    let quality = (isotropy * 0.4 + coverage * 0.3 + distinctiveness * 0.3)
+        .max(0.0)
+        .min(1.0);
 
     Ok(quality)
 }
