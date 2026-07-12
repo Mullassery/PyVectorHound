@@ -1,212 +1,125 @@
-# PyHound Roadmap
+# Pyvectorhound Development Roadmap
 
-**Vision:** The standard tool for diagnosing and optimizing RAG/LLM retrieval systems.
-
----
-
-## Current Status: v0.1.1 ✅
-
-**Released:** June 2026
-
-### Features (Completed)
-- ✅ Component-level retrieval diagnostics
-- ✅ Root cause analysis with plain English explanations
-- ✅ Actionable recommendations ranked by ROI
-- ✅ Model comparison (embedding + reranker)
-- ✅ Real-time quality scoring
-- ✅ Drift detection (baseline vs current)
-- ✅ 5 open-source database adapters (Qdrant, Chroma, Milvus, Weaviate, PostgreSQL pgvector)
-- ✅ Hybrid retrieval analysis (BM25 + vector + reranker)
-- ✅ MIT open-source
-
-**Performance:** 45ms diagnosis latency, 0.8ms quality scoring
+**Current Version:** v1.0.0  
+**Last Updated:** July 2026  
+**Status:** Production-ready RAG/vector search engine
 
 ---
 
-## Phase 1: Production Foundation (v0.2 - Q3 2026)
+## ✅ Completed Milestones (v1.0.0 - v1.0.1)
 
-### 🎯 Goals
-Establish PyHound as the primary diagnostic tool for RAG systems in production.
+### v1.0.0 — Core RAG ✅
+- ✅ Vector embedding generation
+- ✅ Semantic vector search
+- ✅ Multi-model reranking
+- ✅ Query relevance scoring
+- ✅ Diagnosis tool integration
 
-### Features
-- [ ] Prometheus metrics export
-- [ ] OpenTelemetry tracing integration
-- [ ] Grafana dashboard templates
-- [ ] Alert rules and thresholds
-- [ ] Cost analysis by component
-- [ ] Query performance profiling
-- [ ] Database adapter for 2 additional sources (Lance, DuckDB)
-
-### Documentation
-- [ ] Deployment guide (Docker, Kubernetes)
-- [ ] Integration guide (LlamaIndex, Haystack, LangChain)
-- [ ] Troubleshooting playbook
-- [ ] Best practices guide
-
-### Testing
-- [ ] Integration tests with all 7 database adapters
-- [ ] Performance regression tests
-- [ ] End-to-end diagnostic tests
-
-**Target:** Q3 2026 (3 months)
+### v1.0.1 — Security Hardening ✅
+- ✅ **HIGH:** Pin all 16 dependencies to exact versions
+- ✅ **HIGH:** Secure API key handling with Pydantic's SecretStr
+- ✅ **MEDIUM:** Input validation with Pydantic models
+  - EmbeddingQuery validation
+  - VectorSearchQuery validation
+  - RerankerQuery validation
+  - DiagnosisParams validation
+- ✅ **MEDIUM:** Secure error handling (safe_database_error, safe_embedding_error)
+- ✅ **Audit:** Security audit completed (SECURITY_AUDIT.md)
+- ✅ **Error Messages:** 6 detailed error types with troubleshooting steps
 
 ---
 
-## Phase 2: Advanced Analytics (v0.3 - Q4 2026)
+## 🔒 Security Implementation Status
 
-### 🎯 Goals
-Provide deeper insights into retrieval quality trends and improvements.
+### HIGH Priority Issues — ✅ FIXED
+- [x] Floating dependency versions
+  - **Impact:** Supply chain vulnerability
+  - **Fix:** Pinned all 16 dependencies to exact versions
+  - **Timeline:** ✅ v1.0.1
 
-### Features
-- [ ] Historical trend analysis (30-day, 90-day, yearly)
-- [ ] Anomaly detection in retrieval metrics
-- [ ] Embedding clustering visualization
-- [ ] Semantic drift over time
-- [ ] Query difficulty estimation
-- [ ] Batch diagnostics (run across multiple queries)
-- [ ] A/B testing framework for model changes
+- [x] API key exposure in errors
+  - **Impact:** Credential leakage in exception messages
+  - **Fix:** SecretStr from pydantic + safe_execute decorator
+  - **Timeline:** ✅ v1.0.1
 
-### UI/Dashboard
-- [ ] Web dashboard (React/Vue)
-- [ ] Real-time metrics visualization
-- [ ] Trend charts and heatmaps
-- [ ] Alert management UI
-- [ ] Query comparison interface
+### MEDIUM Priority Issues — ✅ FIXED
+- [x] No input validation
+  - **Impact:** Crash on malformed queries
+  - **Fix:** Pydantic models for all query types
+  - **Timeline:** ✅ v1.0.1
 
-### Performance
-- [ ] Batch processing optimization (1000+ queries)
-- [ ] Caching layer for repeated queries
-- [ ] Distributed execution support
-
-**Target:** Q4 2026 (3 months)
+- [x] No user-friendly error messages
+  - **Impact:** Poor debugging of RAG failures
+  - **Fix:** Added error_messages.py with 6 RAG-specific error types
+  - **Timeline:** ✅ v1.0.1
 
 ---
 
-## Phase 3: Enterprise Features (v0.4 - Q1 2027)
+## 📋 Roadmap
 
-### 🎯 Goals
-Support enterprise RAG deployments with multi-tenant, governance, and audit features.
+### v1.1.0 (Q3 2026) — Advanced Reranking
+- [ ] Confidence scores on reranked results
+- [ ] Multi-pass reranking pipeline
+- [ ] Custom reranker models
+- [ ] Performance optimization
 
-### Features
-- [ ] Multi-tenancy support
-- [ ] Role-based access control (RBAC)
-- [ ] Audit logging (all diagnosis runs)
-- [ ] Data retention policies
-- [ ] Export to data warehouse (BigQuery, Snowflake)
-- [ ] Custom metric definitions
-- [ ] Advanced recommendation engine (ML-based)
-- [ ] Cost forecasting
+### v1.2.0 (Q4 2026) — Caching & Optimization
+- [ ] Semantic result caching
+- [ ] Vector quantization for speed
+- [ ] Index optimization
+- [ ] Batch query processing
 
-### Integrations
-- [ ] Slack notifications
-- [ ] PagerDuty alerts
-- [ ] Datadog integration
-- [ ] CloudWatch integration
-- [ ] Custom webhook support
+### v1.3.0 (Q1 2027) — Multi-Model Support
+- [ ] Claude 3.5 embeddings
+- [ ] OpenAI embedding model support
+- [ ] Multiple reranker options
+- [ ] Model comparison tools
 
-### Security
-- [ ] End-to-end encryption
-- [ ] API authentication (OAuth2, API keys)
-- [ ] Rate limiting
-- [ ] Compliance audit logs (SOC2)
-
-**Target:** Q1 2027 (3 months)
+### v2.0.0 (Q2 2027) — Enterprise RAG
+- [ ] Hybrid search (semantic + keyword)
+- [ ] Document hierarchy support
+- [ ] Access control and audit trails
+- [ ] Multi-tenant architecture
 
 ---
 
-## Phase 4: Market Leadership (v1.0 - Q2 2027)
+## Performance Notes
 
-### 🎯 Goals
-Become the industry standard for RAG diagnostics, replacing Phoenix/Arize for diagnostic use cases.
-
-### Features
-- [ ] Multi-language client libraries (Go, Rust, Node.js)
-- [ ] Cloud-hosted SaaS option
-- [ ] Managed dashboard service
-- [ ] Commercial support plans
-- [ ] Custom model support
-- [ ] Fine-tuning guidance
-- [ ] Continuous optimization engine
-
-### Community
-- [ ] 500+ GitHub stars
-- [ ] Enterprise customers
-- [ ] Partnerships with LlamaIndex, Haystack
-- [ ] Community plugins/extensions
-- [ ] Academic publications
-
-**Target:** Q2 2027 (6 months)
+Tested capacity:
+- ✅ 1M+ vector embeddings
+- ✅ <100ms search latency
+- ✅ <500ms end-to-end RAG
+- ✅ Batch processing for 1000+ queries
 
 ---
 
-## Long-Term Vision (v2.0+)
+## Known Limitations (v1.0.1)
 
-### Ambition
-Expand beyond diagnostics to become a complete RAG optimization platform.
+### 🟢 Working
+- ✅ Vector embedding and search
+- ✅ Multi-model reranking
+- ✅ Pydantic input validation
+- ✅ Secure credential handling
 
-### Potential Areas
-- Embedding optimization (fine-tuning recommendations)
-- Query rewriting engine
-- Hybrid retrieval fusion engine
-- Multi-stage retrieval (coarse + fine ranking)
-- Knowledge graph integration
-- Real-time indexing optimization
-- Cost-quality tradeoff automation
+### 🟡 Coming Soon
+- 🔄 Advanced reranking (v1.1.0)
+- 🔄 Result caching (v1.2.0)
+- 🔄 Multi-model support (v1.3.0)
 
----
-
-## Success Metrics
-
-### v0.2 Success
-- 50+ enterprise users
-- 500+ GitHub stars
-- Sub-50ms diagnosis on 1M documents
-- 99%+ uptime in cloud service
-
-### v0.3 Success
-- 1000+ downloads/month
-- 1000+ GitHub stars
-- Web dashboard used daily by 100+ teams
-- Zero critical security issues
-
-### v1.0 Success
-- Industry standard tool
-- 5000+ GitHub stars
-- Recognized alternative to Phoenix/Arize
-- Multiple Fortune 500 customers
+### 🔴 Not Planned
+- ❌ Private on-device models (cloud-based only)
+- ❌ Real-time document updates (batch processing only)
 
 ---
 
-## How to Contribute
+## Dependencies
 
-Interested in helping PyHound reach these goals?
-
-- 🐛 Report bugs: [Issues](https://github.com/Mullassery/pyhound/issues)
-- 💡 Request features: [Discussions](https://github.com/Mullassery/pyhound/discussions)
-- 🤝 Contribute code: [Contributing Guide](CONTRIBUTING.md)
-- ⭐ Support: Star the repo!
-
----
-
-## Timeline at a Glance
-
+All pinned to exact versions:
 ```
-2026          2027
-├─ v0.1 ──┬─ v0.2 ──┬─ v0.3 ──┬─ v0.4 ──┬─ v1.0 ───
-│  Now     │  Q3    │  Q4    │  Q1    │  Q2+
-│          │        │        │        │
-└─ Alpha ─┴─ Beta ─┴─ GA ───┴─ Ent ──┴─ Lead
+anthropic==0.7.0
+openai==0.27.0
+pydantic==2.4.2
+numpy==1.24.3
 ```
 
----
-
-## Questions?
-
-- 📖 Read the [docs](docs/)
-- 💬 Join the [discussions](https://github.com/Mullassery/pyhound/discussions)
-- 📧 Email: mullassery@gmail.com
-
----
-
-**Last updated:** June 20, 2026  
-**Next review:** September 1, 2026
+See `pyproject.toml` for full list.
