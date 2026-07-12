@@ -1,3 +1,4 @@
+from pydantic import SecretStr
 """Database adapters for different vector databases."""
 
 from abc import ABC, abstractmethod
@@ -39,7 +40,7 @@ class VectorDB(ABC):
 class QdrantAdapter(VectorDB):
     """Adapter for Qdrant vector database."""
 
-    def __init__(self, endpoint: str, index_name: str, api_key: Optional[str] = None):
+    def __init__(self, endpoint: str, index_name: str, api_key: Optional[SecretStr] = None):
         """
         Initialize Qdrant adapter.
 
@@ -50,6 +51,9 @@ class QdrantAdapter(VectorDB):
         """
         self.endpoint = endpoint
         self.index_name = index_name
+        if isinstance(api_key, str):
+        self.api_key = SecretStr(api_key)
+    else:
         self.api_key = api_key
         self.client = None
 
