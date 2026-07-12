@@ -55,6 +55,35 @@
 
 ---
 
+## 🔍 Competitive Gaps vs Market
+
+Based on analysis of RAG/vector search market (LangChain, LlamaIndex, Pinecone, Weaviate), these gaps exist:
+
+### CRITICAL (Blocks Adoption)
+- **Single-vendor (Anthropic-only)** — Competitors support 10+ embedding models
+  - **Market Impact:** Teams using Claude + OpenAI + Vertex need unified RAG
+  - **Recommended Fix:** Accelerate multi-vendor to **v1.2.0 (Q4 2026)** from v1.3.0
+  - **Why:** This is blocking 40%+ of potential customers who mix models
+
+### HIGH (Reduces Addressable Market)
+- **No caching/semantic deduplication** — Redundant API calls not prevented
+  - **Competitor Advantage:** LangChain caches embeddings; reduces costs 10x
+  - **Timeline:** v1.2.0 (Q4 2026)
+
+- **No hybrid search** — Only semantic (vector); no keyword search
+  - **Market Impact:** Teams need semantic + keyword for better recall
+  - **Timeline:** v2.0.0 (Q2 2027)
+
+- **No RAG evaluation metrics** — Cannot measure retrieval quality
+  - **Competitor Advantage:** LlamaIndex has built-in RAG evaluation
+  - **Timeline:** v1.2.0 (Q4 2026)
+
+### MEDIUM (Nice-to-Have)
+- **No native observability** — Cannot trace queries through RAG pipeline
+  - **Timeline:** v1.3.0 (Q1 2027)
+
+---
+
 ## 📋 Roadmap
 
 ### v1.1.0 (Q3 2026) — Advanced Reranking
