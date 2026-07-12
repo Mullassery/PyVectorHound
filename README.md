@@ -525,3 +525,22 @@ Built with:
 ---
 
 **Hunt down retrieval problems. Fix them fast.** 
+
+## 🔒 Security & Error Handling
+
+Pyvectorhound includes:
+
+- **Secure API Key Handling**: Uses Pydantic's SecretStr for sensitive data
+- **Input Validation**: Pydantic models for all queries (embedding, search, reranking)
+- **Safe Error Messages**: Diagnostic errors without exposing internal details
+- **Troubleshooting Guidance**: See `pyvectorhound/error_messages.py` for recovery steps
+
+### Security Roadmap
+
+- ✅ v1.0.0: Secure API handling, input validation
+- ✅ v1.0.1: Dependencies pinned, secure error handling
+- 🔄 v1.1.0: Advanced reranking with confidence scores
+- 🔄 v1.2.0: Caching and performance optimization
+- 📋 v1.3.0: Multi-model RAG support
+
+Full roadmap: [ROADMAP.md](ROADMAP.md)
