@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=65.0", "wheel", "maturin>=1.0,<2.0"]
+requires = ["setuptools==65.0", "wheel", "maturin==1.0,<2.0"]
 build-backend = "maturin.build"
 
 [project]
@@ -7,7 +7,7 @@ name = "pyvectorhound"
 version = "1.0.0"
 description = "Diagnostic tool for vector search failures in RAG and LLM systems. Evaluate embedding quality, analyze vector search rank correlation, benchmark BM25 vs semantic search, profile reranker performance. Identify root cause of retrieval failures."
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = "==3.8"
 license = { text = "MIT" }
 authors = [{ name = "Georgi Mammen Mullassery", email = "mullassery@gmail.com" }]
 maintainers = [{ name = "Georgi Mammen Mullassery", email = "mullassery@gmail.com" }]
@@ -56,24 +56,24 @@ classifiers = [
 ]
 
 dependencies = [
-    "numpy>=1.20.0",
-    "requests>=2.28.0",
+    "numpy==1.20.0",
+    "requests==2.28.0",
 ]
 
 [project.optional-dependencies]
-qdrant = ["qdrant-client>=2.0.0"]
-chroma = ["chromadb>=0.4.0"]
-milvus = ["pymilvus>=2.3.0"]
-weaviate = ["weaviate-client>=3.0.0"]
-postgres = ["psycopg2-binary>=2.9.0"]
-pgvector = ["psycopg2-binary>=2.9.0"]
+qdrant = ["qdrant-client==2.0.0"]
+chroma = ["chromadb==0.4.0"]
+milvus = ["pymilvus==2.3.0"]
+weaviate = ["weaviate-client==3.0.0"]
+postgres = ["psycopg2-binary==2.9.0"]
+pgvector = ["psycopg2-binary==2.9.0"]
 dev = [
-    "pytest>=7.0.0",
-    "pytest-cov>=4.0.0",
-    "mypy>=1.0.0",
-    "black>=23.0.0",
-    "ruff>=0.1.0",
-    "maturin>=1.0.0",
+    "pytest==7.0.0",
+    "pytest-cov==4.0.0",
+    "mypy==1.0.0",
+    "black==23.0.0",
+    "ruff==0.1.0",
+    "maturin==1.0.0",
 ]
 all = [
     "pyvectorhound[qdrant,chroma,milvus,weaviate,postgres,pgvector,dev]",
