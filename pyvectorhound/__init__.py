@@ -33,7 +33,7 @@ from pyvectorhound.logging_config import get_logger
 logger = get_logger(__name__)
 logger.info("Initializing Pyvectorhound")
 
-__version__: Final[str] = "0.1.0"
+__version__: Final[str] = "0.2.0"
 __author__: Final[str] = "Georgi Mammen Mullassery"
 __email__: Final[str] = "mullassery@gmail.com"
 __license__: Final[str] = "MIT"
