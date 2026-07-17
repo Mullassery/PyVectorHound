@@ -276,11 +276,11 @@ PyVectorhound goes beyond monitoring: it diagnoses retrieval issues and recommen
 
 PyVectorhound is 3-10x faster than competitors by eliminating cloud latency and Python bottlenecks.
 
-| Metric | Phoenix | Arize | Evidently | PyVectorhound |
-|--------|---------|-------|-----------|---------|
-| Diagnosis Latency (100k docs) | 200ms | 250ms | 150ms | 45ms |
-| Per-Embedding Quality Score | - | - | 8.5ms | 0.8ms |
-| Corpus Analysis (1M docs) | - | - | 45s | 2.3s |
+| Metric | Phoenix | Evidently | PyVectorhound |
+|--------|---------|-----------|---------|
+| Diagnosis Latency (100k docs) | 200ms | 150ms | 45ms |
+| Per-Embedding Quality Score | - | 8.5ms | 0.8ms |
+| Corpus Analysis (1M docs) | - | 45s | 2.3s |
 
 **Why so fast?**
 - Rust core, no Python GIL
@@ -290,18 +290,18 @@ PyVectorhound is 3-10x faster than competitors by eliminating cloud latency and 
 
 ## Feature Comparison Matrix
 
-| Feature | Phoenix | Arize | Evidently | Ragas | PyVectorhound |
-|---------|---------|-------|-----------|-------|---------|
-| Component Isolation | No | No | No | No | Yes |
-| Root Cause Analysis | No | No | No | No | Yes |
-| Recommendations | No | No | No | No | Yes |
-| Cost-Quality Analysis | No | No | No | No | Yes |
-| Model Comparison | No | No | No | No | Yes |
-| Drift Detection | Yes | Yes | Yes | No | Yes |
-| Real-time Scoring | No | No | No | No | Yes |
-| Hybrid Retrieval Focus | No | No | No | Yes | Yes |
-| Local Deployment | No | No | Yes | Yes | Yes |
-| Open Source | Yes | No | Yes | Yes | Yes |
+| Feature | Phoenix | Evidently | Ragas | PyVectorhound |
+|---------|---------|-----------|-------|---------|
+| Component Isolation | No | No | No | Yes |
+| Root Cause Analysis | No | No | No | Yes |
+| Recommendations | No | No | No | Yes |
+| Cost-Quality Analysis | No | No | No | Yes |
+| Model Comparison | No | No | No | Yes |
+| Drift Detection | Yes | Yes | No | Yes |
+| Real-time Scoring | No | No | No | Yes |
+| Hybrid Retrieval Focus | No | No | Yes | Yes |
+| Local Deployment | No | Yes | Yes | Yes |
+| Open Source | Yes | Yes | Yes | Yes |
 | No Vendor Lock-in | Yes | No | Yes | Yes | Yes |
 
 **Key Wins:**
