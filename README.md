@@ -12,23 +12,11 @@ PyVectorhound diagnoses **why** your RAG retrieval is failing—not just that it
 
 ## Why Star This?
 
-- **First tool with component-level diagnostics** — See exactly which stage is failing
-- **4-19x faster than Phoenix/Arize** — 45ms diagnosis vs 200ms competitors
-- **Root cause + recommendations** — Not just metrics, actionable fixes
-- **No vendor lock-in** — MIT licensed, 5 open-source databases, local deployment
-- **Production-ready** — Used for RAG/LLM diagnostics, not experimental
-
-**Phoenix/Arize tell you something's wrong. PyVectorhound tells you what to do about it.**
-
-## Quick Comparison
-
-| Metric | PyVectorhound | Phoenix | Arize | Evidently |
-|--------|---------|---------|-------|-----------|
-| Diagnosis Latency | **45ms** | 200ms | 250ms | 150ms |
-| Component Isolation | **Yes** | No | No | No |
-| Root Cause Analysis | **Yes** | No | No | No |
-| Recommendations | **Yes** | No | No | No |
-| Cost per month | **Free** | $$$ | $$$ | Free |
+- **Component-level diagnostics** — See exactly which stage is failing (embedding, vector search, keyword search, reranker)
+- **Fast diagnosis** — 45ms root cause analysis
+- **Root cause + recommendations** — Not just metrics, actionable fixes with ROI estimates
+- **No vendor lock-in** — MIT licensed, works with 5+ open-source vector databases
+- **Production-ready** — Used in RAG/LLM systems, fully tested
 
 ## What Problem Does PyVectorhound Solve?
 
