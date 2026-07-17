@@ -480,19 +480,11 @@ MIT License — See [LICENSE](LICENSE) for details.
 
 PyVectorhound is free for commercial use.
 
-## Roadmap
-
-- **v0.1** — Embedding Inspector + basic diagnostics
-- **v0.2** — Hybrid retrieval engine (BM25 + vector + reranker)
-- **v0.3** — Embedding versioning with zero-downtime migrations
-- **v1.0** — Advanced optimization tools, full observability integration
-
 ## Next Steps
 
 1. **Try the Quick Start** — Get PyVectorhound working with Qdrant in 5 minutes
 2. **Read Use Cases** — See which scenario matches your problem
 3. **Check Benchmarks** — Understand PyVectorhound's performance vs competitors
-4. **Explore Roadmap** — See what's planned (v0.2-v1.0)
 
 ## Support
 
@@ -523,13 +515,3 @@ Pyvectorhound includes:
 - **Input Validation**: Pydantic models for all queries (embedding, search, reranking)
 - **Safe Error Messages**: Diagnostic errors without exposing internal details
 - **Troubleshooting Guidance**: See `pyvectorhound/error_messages.py` for recovery steps
-
-### Security Roadmap
-
-- ✅ v1.0.0: Secure API handling, input validation
-- ✅ v1.0.1: Dependencies pinned, secure error handling
-- 🔄 v1.1.0: Advanced reranking with confidence scores
-- 🔄 v1.2.0: Caching and performance optimization
-- 📋 v1.3.0: Multi-model RAG support
-
-Full roadmap: [ROADMAP.md](ROADMAP.md)
