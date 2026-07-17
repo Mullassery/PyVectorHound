@@ -1,4 +1,4 @@
-name: Tests
+name: Tests & Build
 
 on:
   push:
@@ -7,6 +7,22 @@ on:
     branches: [main]
 
 jobs:
+  rust-build:
+    name: Rust Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build Rust
+        run: cargo build --release --all-features
+
+      - name: Test Rust
+        run: cargo test --release --all-features
+
   python-tests:
     name: Python Tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
@@ -15,6 +31,10 @@ jobs:
         python-version: ["3.9", "3.10", "3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
 
       - uses: actions/setup-python@v4
         with:
