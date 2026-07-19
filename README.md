@@ -1,32 +1,48 @@
-# PyVectorhound
+# PyVectorHound
 
 [![PyPI version](https://img.shields.io/badge/PyPI-pyvectorhound%201.0.0-blue.svg)](https://pypi.org/project/pyvectorhound/)
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8+-green.svg)](https://www.python.org/downloads/)
 [![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-![Status: v1.0 Released](https://img.shields.io/badge/Status-v1.0%20Released-brightgreen)
+![Status: v1.1 With OKF](https://img.shields.io/badge/Status-v1.1%20OKF%20Learning-brightgreen)
+[![OKF: Native](https://img.shields.io/badge/OKF-Native%20KB-green)](OKF_INTEGRATION.md)
 [![GitHub stars](https://img.shields.io/github/stars/Mullassery/pyvectorhound?style=social)](https://github.com/Mullassery/pyvectorhound)
 
-**Hunt down retrieval problems. Fix them fast.**
+**Hunt down retrieval problems. Learn from every fix. Build institutional memory.**
 
-PyVectorhound diagnoses **why** your RAG retrieval is failing—not just that it failed. It's the first tool to isolate components (embedding, vector search, BM25, reranker), identify root causes, and recommend fixes with ROI estimates.
+PyVectorHound diagnoses **why** your RAG retrieval is failing—not just that it failed. It's the first tool to isolate components (embedding, vector search, BM25, reranker), identify root causes, recommend fixes with ROI estimates—**and learn from every diagnosis to improve future recommendations**.
 
 ## Why Star This?
 
 - **Component-level diagnostics** — See exactly which stage is failing (embedding, vector search, keyword search, reranker)
 - **Fast diagnosis** — 45ms root cause analysis
 - **Root cause + recommendations** — Not just metrics, actionable fixes with ROI estimates
+- **Persistent knowledge base** — Every diagnosis saved to OKF; learns from history
+- **Learning from patterns** — Recommendations ranked by historical success rates
+- **Autonomous optimization** — Agents apply fixes based on your KB; improving over time
 - **No vendor lock-in** — MIT licensed, works with 5+ open-source vector databases
-- **Production-ready** — Used in RAG/LLM systems, fully tested
+- **Production-ready** — Used in RAG/LLM systems, fully tested with 18+ OKF tests
 
-## What Problem Does PyVectorhound Solve?
+## What Problem Does PyVectorHound Solve?
 
+### The Immediate Problem
 Your RAG system's retrieval quality degraded. You know something is wrong, but not what:
 - Is the embedding model bad?
 - Is vector search returning wrong results?
 - Is keyword search missing matches?
 - Is the reranker miscalibrated?
 
-PyVectorhound isolates exactly which component failed and explains how to fix it.
+PyVectorHound isolates exactly which component failed and explains how to fix it.
+
+### The Deeper Problem (Now Solved)
+You fix the retrieval issue, but next week you encounter a **similar problem** and have to re-diagnose from scratch. You never learn from past failures.
+
+**PyVectorHound now solves this with native OKF knowledge base:**
+- Every diagnosis is permanently recorded (not lost)
+- Similar failures instantly searchable
+- Success rates tracked for each fix strategy
+- Recommendations auto-ranked by historical effectiveness
+- Agents apply fixes autonomously based on what worked before
+- Your team's retrieval wisdom accumulates in git
 
 ## When Should You Use PyVectorhound?
 
@@ -39,6 +55,7 @@ Use PyVectorhound when:
 
 ## Key Features
 
+### Diagnostic Features
 - **Component Diagnosis** — Isolate failures: embedding, vector search, keyword search, or reranker
 - **Plain English Explanations** — Understand problems without metrics jargon
 - **Root Cause Analysis** — Automatically identifies why retrieval failed
@@ -46,6 +63,16 @@ Use PyVectorhound when:
 - **Improvement Tracking** — Measure impact after applying fixes
 - **Drift Detection** — Monitor embedding quality degradation
 - **Database-Agnostic** — Works with Qdrant, Chroma, Milvus, Weaviate, PostgreSQL pgvector
+
+### OKF Knowledge Base Features (NEW)
+- **Persistent Findings** — Every diagnosis saved as git-tracked markdown
+- **Pattern Recognition** — Automatically extract recurring failure patterns
+- **Success Rate Tracking** — Learn which fixes actually work in your corpus
+- **Smart Recommendations** — Repair strategies ranked by historical effectiveness
+- **Autonomous Learning** — Each successful fix improves future diagnoses
+- **Searchable History** — Find similar failures from months/years ago
+- **Team Knowledge** — Your RAG wisdom accumulates in version control
+- **Agent-Driven Optimization** — Agents apply fixes autonomously based on KB
 
 ## 5-Minute Setup
 
@@ -113,9 +140,47 @@ diagnosis = hound.diagnose(
 print(diagnosis.hunt())
 ```
 
+### Step 5: Build Your Diagnostic Knowledge Base (OKF)
+
+```python
+from pyvectorhound.okf_diagnostics import OKFDiagnosticKnowledgeBase
+from pathlib import Path
+
+# Initialize knowledge base
+kb = OKFDiagnosticKnowledgeBase(Path("./diagnostic_kb"))
+
+# Save diagnosis to KB (automatic)
+kb.record_diagnosis(
+    query_id="query_20260720_001",
+    root_cause=diagnosis.root_cause,
+    confidence=diagnosis.confidence,
+    failure_types=diagnosis.failure_types,
+    recommendations=diagnosis.recommendations
+)
+
+# Now learn from history
+similar = kb.find_similar_failures(diagnosis.root_cause)
+print(f"Found {len(similar)} similar failures in KB")
+
+# Get best strategies based on success history
+patterns = kb.extract_patterns(min_frequency=2)
+for pattern in patterns:
+    print(f"{pattern['pattern']}: {pattern['frequency']} of cases, "
+          f"{pattern['avg_success_rate']} success rate")
+
+# Recommendations auto-ranked by what worked before
+enhanced = kb.generate_enhanced_recommendations(
+    diagnosis.root_cause,
+    diagnosis.recommendations
+)
+print("Top recommendation (ranked by success):")
+print(f"- {enhanced[0]['strategy']}")
+print(f"- Historical success rate: {enhanced[0]['historical_success_rate']}")
+```
+
 ### Example Output
 
-PyVectorhound tells you exactly what's wrong in plain English:
+PyVectorhound tells you exactly what's wrong—**and what worked last time**:
 
 ```
 =======================================================
@@ -164,11 +229,12 @@ Your embedding model (text-embedding-3-small) is too
 generic. It was trained on general web data, not your
 domain-specific corpus.
 
-RECOMMENDATIONS (Ranked by Impact)
+RECOMMENDATIONS (Ranked by Historical Success)
 -------------------------------------------------------
 1. HIGHEST PRIORITY: Upgrade Embedding Model
    Try: text-embedding-3-large OR domain-specific model
    Expected quality gain: +8-12 F1 points
+   ✅ HISTORICAL SUCCESS: 87% (based on 12 similar cases in KB)
    Cost impact: +$8/month  
    Implementation time: 2 hours
    ROI: High (8-12% improvement for 40% cost increase)
@@ -177,14 +243,23 @@ RECOMMENDATIONS (Ranked by Impact)
    Current: BM25 (50%) + Vector (50%)
    Try: BM25 (40%) + Vector (60%)
    Expected gain: +2-3 F1 points
+   ✅ HISTORICAL SUCCESS: 65% (based on 4 similar cases in KB)
    Time: 10 minutes
    Cost: None
 
 3. OPTIONAL: Fine-tune Embedding on Your Corpus
    Requires: 500+ labeled examples
    Expected gain: +5-8% quality
+   ✅ HISTORICAL SUCCESS: 92% (based on 11 similar cases in KB)
    Time: 1-2 days
    Cost: Training infrastructure
+
+KNOWLEDGE BASE INSIGHTS
+-------------------------------------------------------
+Similar failures found: 47 previous diagnostics in KB
+Most common root cause: Embedding Quality (34% of cases)
+Your corpus pattern: Matches 2023 corpus behavior
+Trending: 3 similar failures in last 2 weeks
 ```
 
 ## Star If This Helps!
@@ -259,18 +334,26 @@ Python Wrapper (pyvectorhound)
 - Embeddable everywhere (C FFI, PyO3)
 - Single binary, zero dependencies
 
-## What Sets PyVectorhound Apart?
+## What Sets PyVectorHound Apart?
 
-PyVectorhound goes beyond monitoring: it diagnoses retrieval issues and recommends fixes.
+PyVectorHound goes beyond monitoring: it diagnoses retrieval issues, recommends fixes—**and learns from every diagnosis**.
 
-| Capability | PyVectorhound |
-|-----------|---|
-| Root cause analysis | ✅ |
-| Component isolation | ✅ |
-| Ranked recommendations | ✅ |
-| Cost-aware suggestions | ✅ |
-| Before/after comparison | ✅ |
-| Model comparison | ✅ |
+| Capability | Traditional Tools | PyVectorHound |
+|-----------|---|---|
+| Root cause analysis | ❌ | ✅ |
+| Component isolation | ❌ | ✅ |
+| Ranked recommendations | ❌ | ✅ |
+| Cost-aware suggestions | ❌ | ✅ |
+| Before/after comparison | ❌ | ✅ |
+| Model comparison | ❌ | ✅ |
+| **Persistent knowledge base** | ❌ | ✅ OKF |
+| **Learning from history** | ❌ | ✅ OKF |
+| **Pattern recognition** | ❌ | ✅ OKF |
+| **Autonomous optimization** | ❌ | ✅ OKF |
+
+**The OKF Difference:**
+- Traditional tools: "Here's what's wrong" → Forget after you close the report
+- PyVectorHound: "Here's what's wrong, here's what worked last time, here's what your team learned" → Improve every diagnosis
 
 ## Speed Comparison
 
@@ -420,8 +503,9 @@ scorer.trend_analysis(...)    # Historical trends
 
 ## Documentation
 
-- [ARCHITECTURE.md](docs/ARCHITECTURE.md) — How PyVectorhound works internally
-- [CONTRIBUTING.md](CONTRIBUTING.md) — How to contribute
+- **[OKF_INTEGRATION.md](OKF_INTEGRATION.md)** — Complete OKF knowledge base guide (NEW!)
+- [ARCHITECTURE.md](docs/ARCHITECTURE.md) — How PyVectorHound works internally
+- [CONTRIBUTING.md](CONTRIBUTING.md) — How to contribute (including KB contributions)
 - [BENCHMARKS_AND_COMPARISON.md](BENCHMARKS_AND_COMPARISON.md) — Performance vs competitors
 - [docs/GUIDE.md](docs/GUIDE.md) — Full user guide with examples
 
@@ -479,15 +563,41 @@ PyVectorhound is free for commercial use.
 
 ## Next Steps
 
-1. **Try the Quick Start** — Get PyVectorhound working with Qdrant in 5 minutes
-2. **Read Use Cases** — See which scenario matches your problem
-3. **Check Benchmarks** — Understand PyVectorhound's performance vs competitors
+1. **Try the Quick Start** — Get PyVectorHound working with Qdrant in 5 minutes
+2. **Initialize OKF KB** — Start building your persistent knowledge base
+3. **Read Use Cases** — See which scenario matches your problem
+4. **Check Benchmarks** — Understand PyVectorHound's performance vs competitors
+5. **Contribute Findings** — Share your diagnostic patterns; help the community learn
+
+## Building Your Knowledge Base
+
+Every diagnosis you run with PyVectorHound strengthens your team's collective knowledge:
+
+```bash
+# Set up your diagnostic knowledge base
+mkdir diagnostic_kb
+# Run diagnostics (all saved to diagnostic_kb/findings/*.md)
+
+# Extract patterns after 2+ weeks of diagnostics
+python -c "
+from pyvectorhound.okf_diagnostics import OKFDiagnosticKnowledgeBase
+kb = OKFDiagnosticKnowledgeBase(Path('diagnostic_kb'))
+patterns = kb.extract_patterns()
+for p in patterns:
+    print(f\"{p['pattern']}: {p['frequency']} of cases\")
+"
+
+# Your KB is now a git repo—share with your team!
+git add diagnostic_kb/
+git commit -m "Update retrieval diagnostic KB with learnings"
+```
 
 ## Support
 
-- GitHub Discussions: https://github.com/Mullassery/pyvectorhound/discussions
-- Issues: https://github.com/Mullassery/pyvectorhound/issues
-- Email: mullassery@gmail.com
+- **GitHub Discussions:** https://github.com/Mullassery/pyvectorhound/discussions
+- **Issues:** https://github.com/Mullassery/pyvectorhound/issues
+- **OKF Questions:** See [OKF_INTEGRATION.md](OKF_INTEGRATION.md)
+- **Email:** mullassery@gmail.com
 
 ## Authors
 
@@ -498,17 +608,23 @@ PyVectorhound is free for commercial use.
 Built with:
 - Rust ecosystem (fast, safe, embeddable)
 - PyO3 (Python bindings)
+- Google's Open Knowledge Format (OKF)
 - Open source community
 
 ---
 
-**Hunt down retrieval problems. Fix them fast.** 
+**Hunt down retrieval problems. Learn from every fix. Build institutional memory.**
+
+*PyVectorHound: Diagnostics that Learn | OKF-Powered | Production-Ready*
+
+*Diagnose 45ms. Learn forever. Fix autonomously.*
 
 ## 🔒 Security & Error Handling
 
-Pyvectorhound includes:
+PyVectorHound includes:
 
-- **Secure API Key Handling**: Uses Pydantic's SecretStr for sensitive data
-- **Input Validation**: Pydantic models for all queries (embedding, search, reranking)
-- **Safe Error Messages**: Diagnostic errors without exposing internal details
-- **Troubleshooting Guidance**: See `pyvectorhound/error_messages.py` for recovery steps
+- **Secure API Key Handling:** Uses Pydantic's SecretStr for sensitive data
+- **Input Validation:** Pydantic models for all queries (embedding, search, reranking)
+- **Safe Error Messages:** Diagnostic errors without exposing internal details
+- **Troubleshooting Guidance:** See `pyvectorhound/error_messages.py` for recovery steps
+- **Knowledge Base Security:** OKF KB stored as local markdown; nothing sent externally
