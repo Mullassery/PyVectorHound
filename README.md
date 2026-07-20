@@ -7,9 +7,11 @@
 [![OKF: Native](https://img.shields.io/badge/OKF-Native%20KB-green)](OKF_INTEGRATION.md)
 [![GitHub stars](https://img.shields.io/github/stars/Mullassery/pyvectorhound?style=social)](https://github.com/Mullassery/pyvectorhound)
 
-**Hunt down retrieval problems. Learn from every fix. Build institutional memory.**
+**Retrieval intelligence platform. Learn from every failure. Build institutional memory.**
 
-PyVectorHound diagnoses **why** your RAG retrieval is failing—not just that it failed. It's the first tool to isolate components (embedding, vector search, BM25, reranker), identify root causes, recommend fixes with ROI estimates—**and learn from every diagnosis to improve future recommendations**.
+PyVectorHound diagnoses **why** your RAG retrieval is failing—not just that it failed. It isolates root causes at component level (embedding, vector search, BM25, reranker), recommends fixes with ROI—**and learns from every diagnosis to improve future recommendations**.
+
+**Architectural Role:** Owns diagnostics and learning. Analyzes failures, extracts patterns, builds persistent knowledge base. Feeds insights back to improve retrieval quality across the platform.
 
 ## Why Star This?
 
