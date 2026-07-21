@@ -2,10 +2,10 @@
 
 from typing import Optional, List, Dict, Any
 import numpy as np
-from pyhound.database import get_adapter, VectorDB
-from pyhound.diagnosis import Diagnosis
-from pyhound.comparison import ModelComparison
-from pyhound.scorer import QualityScorer
+from pyvectorhound.database import get_adapter, VectorDB
+from pyvectorhound.diagnosis import Diagnosis
+from pyvectorhound.comparison import ModelComparison
+from pyvectorhound.scorer import QualityScorer
 
 
 class Hound:

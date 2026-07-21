@@ -52,9 +52,9 @@ class QdrantAdapter(VectorDB):
         self.endpoint = endpoint
         self.index_name = index_name
         if isinstance(api_key, str):
-        self.api_key = SecretStr(api_key)
-    else:
-        self.api_key = api_key
+            self.api_key = SecretStr(api_key)
+        else:
+            self.api_key = api_key
         self.client = None
 
     def connect(self) -> None:
