@@ -43,6 +43,20 @@ try:
     from pyvectorhound.diagnosis import Diagnosis
     from pyvectorhound.comparison import ModelComparison
     from pyvectorhound.scorer import QualityScorer
+    from pyvectorhound.benchmarking import (
+        PerformanceBenchmark,
+        LatencyMetrics,
+        PerformanceSnapshot,
+        StorageMetrics,
+        EmbeddingComparison,
+    )
+    from pyvectorhound.trend_analysis import (
+        TrendAnalyzer,
+        TimeSeries,
+        DriftAnalysis,
+        RegressionAnalysis,
+        AnomalyDetection,
+    )
     logger.debug("Successfully imported core modules")
 except ImportError as e:
     logger.error(f"Failed to import core modules: {e}")
@@ -53,6 +67,16 @@ __all__: Final[list[str]] = [
     "Diagnosis",
     "ModelComparison",
     "QualityScorer",
+    "PerformanceBenchmark",
+    "LatencyMetrics",
+    "PerformanceSnapshot",
+    "StorageMetrics",
+    "EmbeddingComparison",
+    "TrendAnalyzer",
+    "TimeSeries",
+    "DriftAnalysis",
+    "RegressionAnalysis",
+    "AnomalyDetection",
 ]
 
 logger.info(f"Pyvectorhound {__version__} initialized successfully")

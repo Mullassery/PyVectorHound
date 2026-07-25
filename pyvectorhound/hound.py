@@ -6,6 +6,8 @@ from pyvectorhound.database import get_adapter, VectorDB
 from pyvectorhound.diagnosis import Diagnosis
 from pyvectorhound.comparison import ModelComparison
 from pyvectorhound.scorer import QualityScorer
+from pyvectorhound.benchmarking import PerformanceBenchmark, LatencyMetrics
+from pyvectorhound.trend_analysis import TrendAnalyzer
 
 
 class Hound:
@@ -64,6 +66,10 @@ class Hound:
             **self.kwargs
         )
         self.adapter.connect()
+
+        # Initialize performance benchmarking and trend analysis
+        self._benchmarker = PerformanceBenchmark(adapter=self.adapter)
+        self._trend_analyzer = TrendAnalyzer()
 
     def diagnose(
         self,
@@ -228,3 +234,102 @@ class Hound:
             "amount": 0.0,
             "recommendation": "No action needed",
         }
+
+    def benchmark(self) -> PerformanceBenchmark:
+        """
+        Access performance benchmarking engine.
+
+        Returns:
+            PerformanceBenchmark instance for measuring latency and performance
+
+        Examples:
+            >>> benchmark = hound.benchmark()
+            >>> latency = benchmark.measure_query_latency(query_fn, num_iterations=100)
+            >>> report = benchmark.get_performance_report()
+        """
+        return self._benchmarker
+
+    def analyze_trends(self) -> TrendAnalyzer:
+        """
+        Access trend analysis engine.
+
+        Returns:
+            TrendAnalyzer instance for detecting drift and anomalies over time
+
+        Examples:
+            >>> analyzer = hound.analyze_trends()
+            >>> analyzer.track_metric("embedding_isotropy", 0.92)
+            >>> drift = analyzer.detect_drift("embedding_isotropy")
+            >>> report = analyzer.get_trend_report()
+        """
+        return self._trend_analyzer
+
+    def measure_query_latency(
+        self,
+        query_fn,
+        num_iterations: int = 100,
+    ) -> LatencyMetrics:
+        """
+        Measure query latency with percentile analysis.
+
+        Args:
+            query_fn: Callable that performs a query
+            num_iterations: Number of iterations to measure
+
+        Returns:
+            LatencyMetrics with p50, p95, p99 percentiles
+
+        Examples:
+            >>> metrics = hound.measure_query_latency(lambda: hound.diagnose("test"), 100)
+            >>> print(f"P95 latency: {metrics.p95}ms")
+        """
+        return self._benchmarker.measure_query_latency(query_fn, num_iterations)
+
+    def track_metric(
+        self,
+        metric_name: str,
+        value: float,
+        **tags,
+    ) -> None:
+        """
+        Track a metric value for trend analysis.
+
+        Args:
+            metric_name: Name of metric (e.g., "embedding_isotropy")
+            value: Metric value
+            **tags: Optional tags for filtering (e.g., db="qdrant")
+
+        Examples:
+            >>> hound.track_metric("embedding_isotropy", 0.92, model="openai")
+            >>> hound.track_metric("query_latency_ms", 45.2, db="qdrant")
+        """
+        self._trend_analyzer.track_metric(metric_name, value, **tags)
+
+    def get_performance_report(self) -> Dict[str, Any]:
+        """
+        Get comprehensive performance benchmarking report.
+
+        Returns:
+            Dictionary with performance metrics and analysis
+
+        Examples:
+            >>> report = hound.get_performance_report()
+            >>> print(report["latest_snapshot"])
+        """
+        return self._benchmarker.get_performance_report()
+
+    def get_trend_report(self, metric_names: Optional[List[str]] = None) -> Dict[str, Any]:
+        """
+        Get comprehensive trend analysis report.
+
+        Args:
+            metric_names: List of metrics to include (None = all)
+
+        Returns:
+            Dictionary with trend analysis for all tracked metrics
+
+        Examples:
+            >>> report = hound.get_trend_report()
+            >>> print(report["metrics"])
+        """
+        return self._trend_analyzer.get_trend_report(metric_names)
