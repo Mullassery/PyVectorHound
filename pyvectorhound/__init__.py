@@ -57,6 +57,26 @@ try:
         RegressionAnalysis,
         AnomalyDetection,
     )
+    from pyvectorhound.retrieval_tracing import (
+        RetrievalTracer,
+        RetrievalTrace,
+        TracePhase,
+        SearchResult,
+        PhaseMetrics,
+    )
+    from pyvectorhound.retrieval_replay import (
+        RetrievalReplayer,
+        ReplayConfiguration,
+        ReplayResult,
+        ReplayComparison,
+        ComponentType,
+    )
+    from pyvectorhound.recommendations import (
+        RecommendationEngine,
+        DiagnosticReport,
+        FixRecommendation,
+        FailureCategory,
+    )
     logger.debug("Successfully imported core modules")
 except ImportError as e:
     logger.error(f"Failed to import core modules: {e}")
@@ -77,6 +97,20 @@ __all__: Final[list[str]] = [
     "DriftAnalysis",
     "RegressionAnalysis",
     "AnomalyDetection",
+    "RetrievalTracer",
+    "RetrievalTrace",
+    "TracePhase",
+    "SearchResult",
+    "PhaseMetrics",
+    "RetrievalReplayer",
+    "ReplayConfiguration",
+    "ReplayResult",
+    "ReplayComparison",
+    "ComponentType",
+    "RecommendationEngine",
+    "DiagnosticReport",
+    "FixRecommendation",
+    "FailureCategory",
 ]
 
 logger.info(f"Pyvectorhound {__version__} initialized successfully")

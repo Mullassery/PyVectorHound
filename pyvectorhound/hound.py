@@ -8,6 +8,9 @@ from pyvectorhound.comparison import ModelComparison
 from pyvectorhound.scorer import QualityScorer
 from pyvectorhound.benchmarking import PerformanceBenchmark, LatencyMetrics
 from pyvectorhound.trend_analysis import TrendAnalyzer
+from pyvectorhound.retrieval_tracing import RetrievalTracer
+from pyvectorhound.retrieval_replay import RetrievalReplayer
+from pyvectorhound.recommendations import RecommendationEngine
 
 
 class Hound:
@@ -70,6 +73,11 @@ class Hound:
         # Initialize performance benchmarking and trend analysis
         self._benchmarker = PerformanceBenchmark(adapter=self.adapter)
         self._trend_analyzer = TrendAnalyzer()
+
+        # Initialize retrieval tracing, replay, and recommendations
+        self._tracer = RetrievalTracer()
+        self._replayer = RetrievalReplayer()
+        self._recommendation_engine = RecommendationEngine()
 
     def diagnose(
         self,
@@ -333,3 +341,83 @@ class Hound:
             >>> print(report["metrics"])
         """
         return self._trend_analyzer.get_trend_report(metric_names)
+
+    def tracer(self) -> RetrievalTracer:
+        """
+        Access retrieval trace capture engine.
+
+        Returns:
+            RetrievalTracer instance for capturing pipeline execution
+
+        Examples:
+            >>> tracer = hound.tracer()
+            >>> tracer.start_trace("query_1", "search query")
+            >>> tracer.record_embedding(embedding, 15.2)
+            >>> tracer.record_vector_search_results(results)
+            >>> trace = tracer.end_trace()
+        """
+        return self._tracer
+
+    def replayer(self) -> RetrievalReplayer:
+        """
+        Access retrieval replay engine.
+
+        Returns:
+            RetrievalReplayer instance for interactive debugging
+
+        Examples:
+            >>> replayer = hound.replayer()
+            >>> config = replayer.create_configuration("config_1", {...})
+            >>> result = replayer.replay(trace, "config_1")
+            >>> comparison = replayer.compare_configurations("config_1", "config_2")
+        """
+        return self._replayer
+
+    def get_recommendations(
+        self,
+        query_id: str,
+        query_text: str,
+        diagnosis: Dict[str, Any],
+        trace_analysis: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Get AI-powered recommendations for retrieval failure.
+
+        Args:
+            query_id: Unique query identifier
+            query_text: The search query
+            diagnosis: Diagnostic analysis results
+            trace_analysis: Optional detailed trace analysis
+
+        Returns:
+            Dictionary with recommendations and ROI analysis
+
+        Examples:
+            >>> recommendations = hound.get_recommendations(
+            ...     "query_1",
+            ...     "search query",
+            ...     diagnosis_results
+            ... )
+            >>> for rec in recommendations["recommendations"]:
+            ...     print(f"{rec['title']}: +{rec['expected_improvement_pct']}%")
+        """
+        report = self._recommendation_engine.analyze_failure(
+            query_id, query_text, diagnosis, trace_analysis
+        )
+        return report.to_dict()
+
+    def get_recommendation_summary(self, query_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get summary of recommendations for a query.
+
+        Args:
+            query_id: Query identifier
+
+        Returns:
+            Summary dictionary or None if not found
+
+        Examples:
+            >>> summary = hound.get_recommendation_summary("query_1")
+            >>> print(summary["executive_summary"])
+        """
+        return self._recommendation_engine.get_recommendation_summary(query_id)
