@@ -3,6 +3,7 @@
 // High-performance embedding quality metrics, pipeline analysis, and diagnostics.
 
 mod metrics;
+mod retrieval_ranking;
 
 use metrics::{
     compute_coverage, compute_distinctiveness, compute_isotropy, compute_retrieval_metrics,
