@@ -1,0 +1,22 @@
+[mcp]
+enabled = true
+port = 8782
+discovery_method = "stdio"
+
+[mcp.tools]
+create_vector_index = true
+index_documents = true
+semantic_search = true
+similarity_search = true
+hybrid_search = true
+retrieve_by_id = true
+batch_retrieval = true
+cluster_documents = true
+rerank_results = true
+get_index_stats = true
+delete_from_index = true
+update_documents = true
+export_index = true
+
+[mcp.security]
+require_auth = false

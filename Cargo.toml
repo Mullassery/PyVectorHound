@@ -1,9 +1,9 @@
 [package]
 name = "pyvectorhound"
-version = "1.0.0"
+version = "1.2.1"
 edition = "2021"
 authors = ["Georgi Mammen Mullassery <mullassery@gmail.com>"]
-license = "MIT"
+license = "Proprietary"
 description = "Vector search diagnostics engine for RAG/LLM systems"
 
 [dependencies]

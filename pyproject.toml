@@ -4,11 +4,11 @@ build-backend = "maturin"
 
 [project]
 name = "pyvectorhound"
-version = "1.2.0"
+version = "1.2.1"
 description = "Diagnostic tool for vector search failures in RAG and LLM systems. Evaluate embedding quality, analyze vector search rank correlation, benchmark BM25 vs semantic search, profile reranker performance. Identify root cause of retrieval failures."
 readme = "README.md"
-requires-python = "==3.8"
-license = { text = "MIT" }
+requires-python = ">=3.8"
+license = { text = "Proprietary" }
 authors = [{ name = "Georgi Mammen Mullassery", email = "mullassery@gmail.com" }]
 maintainers = [{ name = "Georgi Mammen Mullassery", email = "mullassery@gmail.com" }]
 keywords = [
@@ -39,7 +39,7 @@ classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
+    "License :: Other/Proprietary License",
     "Natural Language :: English",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",

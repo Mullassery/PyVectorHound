@@ -21,7 +21,7 @@ Attributes:
     __version__ (str): Package version
     __author__ (str): Primary author
     __email__ (str): Author email
-    __license__ (str): License type (Proprietary)
+    __license__ (str): License type (MIT)
 """
 
 import logging
@@ -33,10 +33,10 @@ from pyvectorhound.logging_config import get_logger
 logger = get_logger(__name__)
 logger.info("Initializing Pyvectorhound")
 
-__version__: Final[str] = "1.2.1"
+__version__: Final[str] = "0.2.0"
 __author__: Final[str] = "Georgi Mammen Mullassery"
 __email__: Final[str] = "mullassery@gmail.com"
-__license__: Final[str] = "Proprietary"
+__license__: Final[str] = "MIT"
 
 try:
     from pyvectorhound.hound import Hound

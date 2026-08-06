@@ -361,7 +361,7 @@ class PostgresVectorAdapter(VectorDB):
 
         try:
             placeholders = ",".join(["%s"] * len(doc_ids))
-            query_str = f"SELECT id, embedding FROM {self.index_name} WHERE id IN ({placeholders})"
+            query_str = f"SELECT id, embedding FROM `{self.index_name}` WHERE id IN ({placeholders})"
 
             cursor.execute(query_str, doc_ids)
 
@@ -383,7 +383,7 @@ class PostgresVectorAdapter(VectorDB):
         cursor = self.connection.cursor()
 
         try:
-            cursor.execute(f"SELECT COUNT(*) FROM {self.index_name}")
+            cursor.execute(f"SELECT COUNT(*) FROM `{self.index_name}`")
             count = cursor.fetchone()[0]
             return count
 
