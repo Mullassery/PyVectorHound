@@ -4,7 +4,7 @@ from typing import Dict, Any, List, Optional
 import numpy as np
 
 try:
-    from pyhound import _core
+    from pyvectorhound import _core
 except ImportError:
     _core = None
 
@@ -32,7 +32,9 @@ class QualityScorer:
 
     def score(self, embedding: np.ndarray) -> Dict[str, Any]:
         """
-        Score a single embedding for quality.
+        Score a single embedding for quality, in the context of its nearest
+        neighbors in the corpus (isotropy/coverage/distinctiveness are
+        properties of a *set* of vectors, not a single one in isolation).
 
         Args:
             embedding: Embedding vector to score
@@ -48,35 +50,48 @@ class QualityScorer:
         """
         embedding = np.array(embedding, dtype=np.float32)
 
-        # Use Rust core if available
-        if _core is not None and hasattr(_core, "py_compute_quality_score"):
+        sample_vectors = [embedding.tolist()]
+        if self.adapter is not None:
             try:
-                overall = _core.py_compute_quality_score([embedding.tolist()])
+                neighbors = self.adapter.search(embedding, top_k=20)
+                neighbor_ids = [str(r["id"]) for r in neighbors]
+                neighbor_embeddings = self.adapter.get_embeddings(neighbor_ids)
+                sample_vectors.extend(v.tolist() for v in neighbor_embeddings.values())
             except Exception:
-                overall = 0.0
-        else:
-            overall = 0.5  # Placeholder
+                pass  # Fall back to scoring the embedding in isolation below.
 
-        # Determine status
-        if overall > 0.75:
-            status = "GOOD"
-        elif overall > 0.5:
-            status = "MODERATE"
+        can_compute = _core is not None and len(sample_vectors) >= 2
+        if can_compute:
+            isotropy = _core.py_compute_isotropy(sample_vectors)
+            coverage = _core.py_compute_coverage(sample_vectors)
+            distinctiveness = _core.py_compute_distinctiveness(sample_vectors)
+            overall = _core.py_compute_quality_score(sample_vectors)
+
+            status = "GOOD" if overall > 0.75 else "MODERATE" if overall > 0.5 else "WEAK"
         else:
-            status = "WEAK"
+            isotropy = coverage = distinctiveness = overall = 0.0
+            status = "UNKNOWN"
 
         return {
-            "isotropy": 0.72,  # Should be >0.7
-            "coverage": 0.85,  # Should be >0.8
-            "distinctiveness": 0.68,  # Should be >0.6
-            "query_relevance": 0.70,
-            "status": status,  # GOOD, MODERATE, WEAK
+            "isotropy": isotropy,
+            "coverage": coverage,
+            "distinctiveness": distinctiveness,
+            "sample_size": len(sample_vectors),
+            "status": status,  # GOOD, MODERATE, WEAK, or UNKNOWN if not enough data
             "overall": overall,
         }
 
-    def corpus_health(self) -> Dict[str, Any]:
+    def corpus_health(self, sample_size: int = 100) -> Dict[str, Any]:
         """
-        Get overall corpus embedding health.
+        Get overall corpus embedding health, computed from a real sample of
+        corpus vectors rather than fixed placeholder numbers.
+
+        Note: drift/trend require a historical baseline snapshot to compare
+        against, which this class doesn't yet store -- those fields honestly
+        report as not-measured rather than a fabricated "stable" value.
+
+        Args:
+            sample_size: Number of corpus vectors to sample for the quality metrics
 
         Returns:
             Health metrics for the entire corpus
@@ -84,27 +99,39 @@ class QualityScorer:
         Examples:
             >>> health = scorer.corpus_health()
             >>> print(f"Status: {health['status']}")
-            >>> print(f"Drift: {health['drift']:.2%}")
         """
-        # Sample embeddings from corpus
         corpus_size = self.adapter.corpus_size() if self.adapter else 0
 
-        # Determine trend
-        if corpus_size > 100000:
-            trend = "stable"
-            drift = 0.02
+        sample_vectors: List[List[float]] = []
+        if self.adapter is not None and corpus_size > 0:
+            try:
+                probe = np.random.randn(768).astype(np.float32)
+                neighbors = self.adapter.search(probe, top_k=sample_size)
+                neighbor_ids = [str(r["id"]) for r in neighbors]
+                sample_embeddings = self.adapter.get_embeddings(neighbor_ids)
+                sample_vectors = [v.tolist() for v in sample_embeddings.values()]
+            except Exception:
+                sample_vectors = []
+
+        if _core is not None and len(sample_vectors) >= 2:
+            avg_isotropy = _core.py_compute_isotropy(sample_vectors)
+            avg_coverage = _core.py_compute_coverage(sample_vectors)
+            avg_distinctiveness = _core.py_compute_distinctiveness(sample_vectors)
+            overall = _core.py_compute_quality_score(sample_vectors)
+            status = "GOOD" if overall > 0.75 else "MODERATE" if overall > 0.5 else "WEAK"
         else:
-            trend = "stable"
-            drift = 0.01
+            avg_isotropy = avg_coverage = avg_distinctiveness = 0.0
+            status = "UNKNOWN"
 
         return {
-            "avg_isotropy": 0.73,
-            "avg_coverage": 0.82,
-            "avg_distinctiveness": 0.65,
-            "drift": drift,
+            "avg_isotropy": avg_isotropy,
+            "avg_coverage": avg_coverage,
+            "avg_distinctiveness": avg_distinctiveness,
+            "sample_size": len(sample_vectors),
+            "drift": None,  # Requires a stored historical baseline; not tracked yet.
             "corpus_size": corpus_size,
-            "trend": trend,  # stable, improving, degrading
-            "status": "GOOD",
+            "trend": "unknown",  # Requires historical tracking; not computed here.
+            "status": status,
         }
 
     def detect_anomalies(
@@ -185,15 +212,23 @@ class QualityScorer:
             ...     current_date="2026-06-20"
             ... )
             >>> print(f"Trend: {trend['direction']}")
-            >>> print(f"Magnitude: {trend['magnitude']:.2%}")
+
+        Note:
+            QualityScorer doesn't persist historical quality snapshots, so
+            this can't compute a real trend between two dates yet -- use
+            `pyvectorhound.trend_analysis.TrendAnalyzer` (wired up on `Hound`
+            as `hound._trend_analyzer`) to track metrics over time and get a
+            real trend report via `get_trend_report()`.
         """
         return {
-            "direction": "stable",  # improving, stable, degrading
-            "magnitude": 0.02,
-            "days": 172,
-            "components": {
-                "isotropy": {"direction": "stable", "change": 0.01},
-                "coverage": {"direction": "stable", "change": 0.00},
-                "distinctiveness": {"direction": "stable", "change": 0.02},
-            },
+            "direction": "unknown",
+            "magnitude": None,
+            "baseline_date": baseline_date,
+            "current_date": current_date,
+            "components": {},
+            "explanation": (
+                "QualityScorer does not store historical snapshots. "
+                "Use TrendAnalyzer.track_metric() over time and TrendAnalyzer.get_trend_report() "
+                "for a real trend analysis."
+            ),
         }

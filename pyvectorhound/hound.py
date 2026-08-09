@@ -27,7 +27,7 @@ class Hound:
         adapter: Connected database adapter
 
     Examples:
-        >>> from pyhound import Hound
+        >>> from pyvectorhound import Hound
         >>> hound = Hound(db="qdrant", endpoint="localhost:6333")
         >>> diagnosis = hound.diagnose(query="your query", top_k=5)
         >>> print(diagnosis.hunt())

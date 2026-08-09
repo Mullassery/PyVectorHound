@@ -25,6 +25,7 @@ Attributes:
 """
 
 import logging
+from importlib.metadata import PackageNotFoundError, version
 from typing import Final
 
 from pyvectorhound.logging_config import get_logger
@@ -33,7 +34,10 @@ from pyvectorhound.logging_config import get_logger
 logger = get_logger(__name__)
 logger.info("Initializing Pyvectorhound")
 
-__version__: Final[str] = "1.2.1"
+try:
+    __version__: Final[str] = version("pyvectorhound")
+except PackageNotFoundError:
+    __version__: Final[str] = "0.0.0+unknown"
 __author__: Final[str] = "Georgi Mammen Mullassery"
 __email__: Final[str] = "mullassery@gmail.com"
 __license__: Final[str] = "Proprietary"

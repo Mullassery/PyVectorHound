@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import numpy as np
 
 try:
-    from pyhound import _core
+    from pyvectorhound import _core
 except ImportError:
     _core = None
 
@@ -56,40 +56,85 @@ class Diagnosis:
 
     def analyze(self) -> None:
         """Run analysis on the retrieval results."""
-        if _core is None:
-            return
-
-        # Analyze embedding quality
-        embedding_metrics = self._analyze_embedding()
-        self._analysis["embedding"] = embedding_metrics
-
-        # Analyze vector search quality
-        vector_metrics = self._analyze_vector_search()
-        self._analysis["vector_search"] = vector_metrics
-
-        # Analyze BM25 (would need results, using placeholders)
-        bm25_metrics = self._analyze_bm25()
-        self._analysis["bm25"] = bm25_metrics
-
-        # Analyze reranker (would need reranker scores)
-        reranker_metrics = self._analyze_reranker()
-        self._analysis["reranker"] = reranker_metrics
+        # Vector search precision/recall/MRR only need self.results and
+        # expected_docs -- they don't depend on the compiled Rust extension,
+        # so they run regardless of whether _core is available.
+        self._analysis["embedding"] = self._analyze_embedding()
+        self._analysis["vector_search"] = self._analyze_vector_search()
+        self._analysis["bm25"] = self._analyze_bm25()
+        self._analysis["reranker"] = self._analyze_reranker()
 
     def _analyze_embedding(self) -> Dict[str, Any]:
-        """Analyze embedding quality."""
-        # Placeholder embedding analysis
+        """Analyze embedding quality using real per-document vectors.
+
+        Fetches the actual stored embeddings for the retrieved documents via
+        the adapter (not the query embedding echoed back by search()), then
+        computes isotropy/coverage/distinctiveness with the compiled Rust
+        engine. Reports UNKNOWN rather than a fabricated score whenever the
+        real inputs needed for the computation aren't available.
+        """
+        if _core is None:
+            return {
+                "status": "UNKNOWN",
+                "isotropy": 0.0,
+                "coverage": 0.0,
+                "distinctiveness": 0.0,
+                "overall": 0.0,
+                "explanation": (
+                    "The compiled embedding-quality engine (pyvectorhound._core) "
+                    "isn't available in this install, so embedding quality wasn't measured."
+                ),
+            }
+
+        if self.adapter is None or not self.results:
+            return {
+                "status": "UNKNOWN",
+                "isotropy": 0.0,
+                "coverage": 0.0,
+                "distinctiveness": 0.0,
+                "overall": 0.0,
+                "explanation": "No adapter or results available to fetch document embeddings from.",
+            }
+
+        doc_ids = [str(r["id"]) for r in self.results]
+        embeddings_by_id = self.adapter.get_embeddings(doc_ids)
+        vectors = [v.tolist() for v in embeddings_by_id.values()]
+
+        if len(vectors) < 2:
+            return {
+                "status": "UNKNOWN",
+                "isotropy": 0.0,
+                "coverage": 0.0,
+                "distinctiveness": 0.0,
+                "overall": 0.0,
+                "explanation": (
+                    f"Only {len(vectors)} document embedding(s) could be fetched "
+                    "(need at least 2) to compute embedding quality metrics."
+                ),
+            }
+
+        isotropy = _core.py_compute_isotropy(vectors)
+        coverage = _core.py_compute_coverage(vectors)
+        distinctiveness = _core.py_compute_distinctiveness(vectors)
+        overall = _core.py_compute_quality_score(vectors)
+
+        status = "GOOD" if overall > 0.75 else "MODERATE" if overall > 0.5 else "WEAK"
+
         return {
-            "status": "GOOD",
-            "isotropy": 0.72,
-            "coverage": 0.85,
-            "distinctiveness": 0.68,
-            "overall": 0.75,
-            "explanation": "Embedding quality is good. Vector space is well-utilized.",
+            "status": status,
+            "isotropy": isotropy,
+            "coverage": coverage,
+            "distinctiveness": distinctiveness,
+            "overall": overall,
+            "explanation": (
+                f"Computed from {len(vectors)} real document embeddings. "
+                f"Isotropy {isotropy:.1%}, coverage {coverage:.1%}, distinctiveness {distinctiveness:.1%}."
+            ),
         }
 
     def _analyze_vector_search(self) -> Dict[str, Any]:
         """Analyze vector search quality."""
-        # Calculate precision/recall if ground truth available
+        # Calculate precision/recall/MRR if ground truth available
         if self.expected_docs:
             retrieved_ids = [str(r["id"]) for r in self.results]
             relevant = set(self.expected_docs)
@@ -98,6 +143,7 @@ class Diagnosis:
             tp = len(relevant & retrieved)
             precision = tp / len(retrieved) if retrieved else 0.0
             recall = tp / len(relevant) if relevant else 0.0
+            mrr = self._compute_mrr(retrieved_ids, relevant)
 
             status = "GOOD" if precision > 0.8 else "MODERATE" if precision > 0.5 else "WEAK"
 
@@ -105,7 +151,7 @@ class Diagnosis:
                 "status": status,
                 "precision": precision,
                 "recall": recall,
-                "mrr": 0.85 if tp > 0 else 0.0,
+                "mrr": mrr,
                 "explanation": f"Vector search precision: {precision:.1%}",
             }
 
@@ -113,25 +159,44 @@ class Diagnosis:
             "status": "UNKNOWN",
             "precision": 0.0,
             "recall": 0.0,
+            "mrr": 0.0,
             "explanation": "Provide expected_docs for ground truth comparison.",
         }
 
+    @staticmethod
+    def _compute_mrr(retrieved_ids: List[str], relevant_ids: set) -> float:
+        """Reciprocal rank of the first relevant result actually retrieved, in order."""
+        for i, doc_id in enumerate(retrieved_ids):
+            if doc_id in relevant_ids:
+                return 1.0 / (i + 1)
+        return 0.0
+
     def _analyze_bm25(self) -> Dict[str, Any]:
-        """Analyze BM25 quality."""
+        """Analyze BM25 quality.
+
+        There is no keyword-search index or BM25 scoring subsystem wired into
+        this codebase, so this honestly reports UNKNOWN rather than a
+        fabricated score. Pass real BM25 precision/recall in to replace this
+        once that subsystem exists.
+        """
         return {
-            "status": "GOOD",
-            "precision": 0.85,
-            "recall": 0.78,
-            "explanation": "BM25 keyword search is working well.",
+            "status": "UNKNOWN",
+            "precision": 0.0,
+            "recall": 0.0,
+            "explanation": "BM25 keyword search is not implemented in this version; not measured.",
         }
 
     def _analyze_reranker(self) -> Dict[str, Any]:
-        """Analyze reranker quality."""
+        """Analyze reranker quality.
+
+        No reranker score input exists on this Diagnosis (see __init__), so
+        this honestly reports UNKNOWN rather than a fabricated score.
+        """
         return {
-            "status": "GOOD",
-            "calibration": 0.91,
-            "ndcg": 0.73,
-            "explanation": "Reranker is helping improve results.",
+            "status": "UNKNOWN",
+            "calibration": 0.0,
+            "ndcg": 0.0,
+            "explanation": "No reranker scores were provided; reranker quality not measured.",
         }
 
     def hunt(self) -> str:
@@ -234,7 +299,8 @@ RECOMMENDATIONS
             )
 
         # Check vector search
-        if self._analysis.get("vector_search", {}).get("precision", 0) < 0.7:
+        vector_search = self._analysis.get("vector_search", {})
+        if vector_search.get("status") not in (None, "UNKNOWN") and vector_search.get("precision", 0) < 0.7:
             recs.append(
                 {
                     "priority": "MEDIUM",
@@ -280,13 +346,18 @@ RECOMMENDATIONS
                 "Your embedding model doesn't understand domain-specific concepts. "
                 "Consider upgrading to a larger or domain-specific model."
             )
-        elif vector.get("precision", 0) < 0.7:
+        elif vector.get("status") not in (None, "UNKNOWN") and vector.get("precision", 0) < 0.7:
             return (
                 "Vector search precision is low. Results are not well-ranked. "
                 "This could be caused by poor embeddings or low similarity thresholds."
             )
-        elif bm25.get("precision", 0) < 0.7:
+        elif bm25.get("status") not in (None, "UNKNOWN") and bm25.get("precision", 0) < 0.7:
             return "Keyword search (BM25) is not finding relevant matches."
+        elif embedding.get("status") == "UNKNOWN" and vector.get("status") == "UNKNOWN":
+            return (
+                "Not enough data was available to diagnose retrieval quality -- "
+                "provide expected_docs and ensure the adapter can return document embeddings."
+            )
         else:
             return "Retrieval quality is good. No obvious issues detected."
 

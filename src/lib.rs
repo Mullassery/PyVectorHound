@@ -81,7 +81,7 @@ fn py_compute_quality_score(embeddings: Vec<Vec<f32>>) -> PyResult<f32> {
 
 /// PyHound Python module
 #[pymodule]
-fn pyhound_core(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn _core(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_compute_isotropy, m)?)?;
     m.add_function(wrap_pyfunction!(py_compute_coverage, m)?)?;
     m.add_function(wrap_pyfunction!(py_compute_distinctiveness, m)?)?;

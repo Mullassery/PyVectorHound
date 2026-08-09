@@ -39,6 +39,9 @@ class TestHound:
                 self.search_calls.append((query_embedding, top_k))
                 return [{"id": "doc_1", "score": 0.9, "embedding": query_embedding}]
 
+            def get_embeddings(self, doc_ids):
+                return {}
+
         fake_adapter = FakeAdapter()
         hound.adapter = fake_adapter
 
