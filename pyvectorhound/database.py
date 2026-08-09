@@ -195,16 +195,27 @@ class ChromaAdapter(VectorDB):
 class MilvusAdapter(VectorDB):
     """Adapter for Milvus vector database."""
 
-    def __init__(self, endpoint: str, index_name: str, **kwargs):
+    def __init__(
+        self,
+        endpoint: str,
+        index_name: str,
+        vector_field: str = "vector",
+        id_field: str = "id",
+        **kwargs,
+    ):
         """
         Initialize Milvus adapter.
 
         Args:
             endpoint: Milvus endpoint
             index_name: Collection name
+            vector_field: Name of the vector field in the collection schema
+            id_field: Name of the primary key field in the collection schema
         """
         self.endpoint = endpoint
         self.index_name = index_name
+        self.vector_field = vector_field
+        self.id_field = id_field
         self.client = None
         self.collection = None
 
@@ -229,14 +240,14 @@ class MilvusAdapter(VectorDB):
             collection_name=self.collection,
             data=[query_embedding.tolist()],
             limit=top_k,
-            output_fields=["id"],
+            output_fields=[self.id_field],
         )
 
         output = []
         for result in results[0]:
             output.append(
                 {
-                    "id": result["id"],
+                    "id": result[self.id_field],
                     "score": result["distance"],
                     "embedding": query_embedding,
                 }
@@ -245,13 +256,29 @@ class MilvusAdapter(VectorDB):
         return output
 
     def get_embeddings(self, doc_ids: List[str]) -> Dict[str, np.ndarray]:
-        """Get embeddings for documents."""
+        """Get embeddings for documents by primary key.
+
+        Uses MilvusClient.get() to retrieve the stored vector for each requested
+        document ID directly from the collection.
+        """
         if self.client is None:
             self.connect()
 
-        # Milvus requires filtering; simplified approach
-        embeddings = {}
-        # TODO: Implement proper embedding retrieval from Milvus
+        if not doc_ids:
+            return {}
+
+        records = self.client.get(
+            collection_name=self.collection,
+            ids=doc_ids,
+            output_fields=[self.id_field, self.vector_field],
+        )
+
+        embeddings: Dict[str, np.ndarray] = {}
+        for record in records:
+            vector = record.get(self.vector_field)
+            if vector is None:
+                continue
+            embeddings[str(record[self.id_field])] = np.array(vector, dtype=np.float32)
 
         return embeddings
 

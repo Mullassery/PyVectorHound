@@ -1,7 +1,9 @@
 """Tests for Hound class."""
 
+import numpy as np
 import pytest
 from pyvectorhound import Hound
+from pyvectorhound.diagnosis import Diagnosis
 
 
 class TestHound:
@@ -22,14 +24,55 @@ class TestHound:
 
     def test_unsupported_db(self):
         """Test that unsupported database raises error."""
-        # TODO: Should raise ValueError for unsupported DB
-        pass
+        with pytest.raises(ValueError, match="Unsupported database"):
+            Hound(db="not_a_real_db")
 
     def test_diagnose(self):
-        """Test basic diagnosis."""
+        """Test that diagnose() searches via the adapter and returns a real Diagnosis."""
         hound = Hound(db="qdrant")
-        # TODO: Mock database and test diagnosis
-        pass
+
+        class FakeAdapter:
+            def __init__(self):
+                self.search_calls = []
+
+            def search(self, query_embedding, top_k=5):
+                self.search_calls.append((query_embedding, top_k))
+                return [{"id": "doc_1", "score": 0.9, "embedding": query_embedding}]
+
+        fake_adapter = FakeAdapter()
+        hound.adapter = fake_adapter
+
+        diagnosis = hound.diagnose(query="quantum computing", top_k=3)
+
+        assert isinstance(diagnosis, Diagnosis)
+        assert diagnosis.query == "quantum computing"
+        assert diagnosis.results == [
+            {"id": "doc_1", "score": 0.9, "embedding": fake_adapter.search_calls[0][0]}
+        ]
+        assert len(fake_adapter.search_calls) == 1
+        assert fake_adapter.search_calls[0][1] == 3
+
+    def test_diagnose_generates_query_embedding_when_none_provided(self):
+        """diagnose() must actually call the adapter with a real embedding vector,
+        not silently skip the search when no embedding is supplied."""
+        hound = Hound(db="qdrant")
+
+        class RecordingAdapter:
+            def __init__(self):
+                self.received_embedding = None
+
+            def search(self, query_embedding, top_k=5):
+                self.received_embedding = query_embedding
+                return []
+
+        recording_adapter = RecordingAdapter()
+        hound.adapter = recording_adapter
+
+        hound.diagnose(query="no embedding provided")
+
+        assert recording_adapter.received_embedding is not None
+        assert isinstance(recording_adapter.received_embedding, np.ndarray)
+        assert recording_adapter.received_embedding.shape == (768,)
 
     def test_quality_scorer(self):
         """Test quality scorer initialization."""
