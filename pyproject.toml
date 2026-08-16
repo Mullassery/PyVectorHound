@@ -64,7 +64,7 @@ dependencies = [
 
 [project.optional-dependencies]
 qdrant = ["qdrant-client>=1.7,<3"]
-chroma = ["chromadb>=0.4,<1"]
+chroma = ["chromadb>=0.4,<2"]
 milvus = ["pymilvus>=2.3,<3"]
 weaviate = ["weaviate-client>=3.24,<4"]
 postgres = ["psycopg2-binary>=2.9,<3"]
