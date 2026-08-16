@@ -1,9 +1,9 @@
-from pydantic import SecretStr
 """Database adapters for different vector databases."""
 
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional, Tuple
 import numpy as np
+from pydantic import SecretStr
 
 
 class VectorDB(ABC):
@@ -70,7 +70,7 @@ class QdrantAdapter(VectorDB):
                     host=host, port=int(port), api_key=self.api_key
                 )
         except ImportError:
-            raise ImportError("qdrant-client not installed. Run: pip install pyhound[qdrant]")
+            raise ImportError("qdrant-client not installed. Run: pip install pyvectorhound[qdrant]")
 
     def search(
         self, query_embedding: np.ndarray, top_k: int = 5
@@ -83,13 +83,18 @@ class QdrantAdapter(VectorDB):
             collection_name=self.index_name,
             query_vector=query_embedding.tolist(),
             limit=top_k,
+            with_vectors=True,
         )
 
         return [
             {
                 "id": result.id,
                 "score": result.score,
-                "embedding": query_embedding,  # Note: Qdrant doesn't return embeddings
+                # Real per-document embedding when Qdrant returns one;
+                # falls back to the query embedding only if the point has none.
+                "embedding": np.array(result.vector, dtype=np.float32)
+                if getattr(result, "vector", None) is not None
+                else query_embedding,
             }
             for result in results
         ]
@@ -146,7 +151,7 @@ class ChromaAdapter(VectorDB):
 
             self.collection = self.client.get_collection(name=self.index_name)
         except ImportError:
-            raise ImportError("chromadb not installed. Run: pip install pyhound[chroma]")
+            raise ImportError("chromadb not installed. Run: pip install pyvectorhound[chroma]")
 
     def search(
         self, query_embedding: np.ndarray, top_k: int = 5
@@ -156,16 +161,24 @@ class ChromaAdapter(VectorDB):
             self.connect()
 
         results = self.collection.query(
-            query_embeddings=[query_embedding.tolist()], n_results=top_k
+            query_embeddings=[query_embedding.tolist()],
+            n_results=top_k,
+            include=["embeddings", "distances"],
         )
+
+        result_embeddings = results.get("embeddings")
 
         output = []
         for i, doc_id in enumerate(results["ids"][0]):
+            if result_embeddings is not None and result_embeddings[0][i] is not None:
+                embedding = np.array(result_embeddings[0][i], dtype=np.float32)
+            else:
+                embedding = query_embedding
             output.append(
                 {
                     "id": doc_id,
                     "score": results["distances"][0][i],
-                    "embedding": query_embedding,
+                    "embedding": embedding,
                 }
             )
 
@@ -227,7 +240,7 @@ class MilvusAdapter(VectorDB):
             self.client = MilvusClient(uri=self.endpoint)
             self.collection = self.index_name
         except ImportError:
-            raise ImportError("pymilvus not installed. Run: pip install pyhound[milvus]")
+            raise ImportError("pymilvus not installed. Run: pip install pyvectorhound[milvus]")
 
     def search(
         self, query_embedding: np.ndarray, top_k: int = 5
@@ -240,16 +253,21 @@ class MilvusAdapter(VectorDB):
             collection_name=self.collection,
             data=[query_embedding.tolist()],
             limit=top_k,
-            output_fields=[self.id_field],
+            output_fields=[self.id_field, self.vector_field],
         )
 
         output = []
         for result in results[0]:
+            entity = result.get("entity", {}) if isinstance(result, dict) else {}
+            vector = entity.get(self.vector_field)
+            embedding = (
+                np.array(vector, dtype=np.float32) if vector is not None else query_embedding
+            )
             output.append(
                 {
                     "id": result[self.id_field],
                     "score": result["distance"],
-                    "embedding": query_embedding,
+                    "embedding": embedding,
                 }
             )
 
@@ -334,7 +352,7 @@ class PostgresVectorAdapter(VectorDB):
             )
         except ImportError:
             raise ImportError(
-                "psycopg2 not installed. Run: pip install pyhound[postgres]"
+                "psycopg2 not installed. Run: pip install pyvectorhound[postgres]"
             )
         except Exception as e:
             raise ConnectionError(f"Failed to connect to PostgreSQL: {e}")
@@ -370,7 +388,11 @@ class PostgresVectorAdapter(VectorDB):
                     {
                         "id": str(doc_id),
                         "score": similarity,
-                        "embedding": query_embedding,
+                        # Use the real per-document embedding fetched above,
+                        # not the query embedding.
+                        "embedding": np.array(embedding, dtype=np.float32)
+                        if embedding is not None
+                        else query_embedding,
                     }
                 )
 
@@ -445,7 +467,7 @@ class WeaviateAdapter(VectorDB):
 
             self.client = weaviate.Client(self.endpoint)
         except ImportError:
-            raise ImportError("weaviate-client not installed. Run: pip install pyhound[weaviate]")
+            raise ImportError("weaviate-client not installed. Run: pip install pyvectorhound[weaviate]")
 
     def search(
         self, query_embedding: np.ndarray, top_k: int = 5
@@ -460,12 +482,16 @@ class WeaviateAdapter(VectorDB):
 
         output = []
         for result in results["data"]["Get"][self.index_name]:
+            additional = result.get("_additional", {})
+            vector = additional.get("vector")
+            embedding = (
+                np.array(vector, dtype=np.float32) if vector is not None else query_embedding
+            )
             output.append(
                 {
-                    "id": result.get("_additional", {}).get("id", "unknown"),
-                    "score": 1.0
-                    - result.get("_additional", {}).get("distance", 1.0),
-                    "embedding": query_embedding,
+                    "id": additional.get("id", "unknown"),
+                    "score": 1.0 - additional.get("distance", 1.0),
+                    "embedding": embedding,
                 }
             )
 

@@ -1,7 +1,6 @@
 """Model comparison for evaluating embedding and reranker models."""
 
-from typing import List, Dict, Any, Optional
-import json
+from typing import List, Dict, Any, Optional, Callable
 
 
 # Model metadata for cost and performance
@@ -63,10 +62,20 @@ class ModelComparison:
         adapter: Optional[Any] = None,
         test_queries: Optional[List[str]] = None,
         sample_size: int = 100,
+        quality_fn: Optional[Callable[[str], Dict[str, float]]] = None,
         **kwargs: Any,
     ):
         """
         Initialize ModelComparison.
+
+        PyVectorHound does not run embedding or reranker models itself, so it
+        cannot measure quality (F1/precision/recall/NDCG/calibration) for a
+        candidate model on its own -- that requires actually running the
+        model against your corpus and test queries. Pass `quality_fn` (a
+        callable that takes a model name and returns a metrics dict, e.g.
+        wrapping your own eval harness) to get real quality numbers; without
+        it, only the real published cost/latency/provider metadata is
+        reported and quality fields are left unmeasured rather than guessed.
 
         Args:
             model_type: Type of model ('embedding' or 'reranker')
@@ -74,12 +83,16 @@ class ModelComparison:
             adapter: Database adapter for testing
             test_queries: Optional list of queries to use for testing
             sample_size: Number of queries to test
+            quality_fn: Optional callable(model_name) -> metrics dict
+                (f1_score/precision/recall for embedding, ndcg/calibration
+                for reranker) computed from your own evaluation of that model
         """
         self.model_type = model_type
         self.candidates = candidates
         self.adapter = adapter
         self.test_queries = test_queries or []
         self.sample_size = sample_size
+        self.quality_fn = quality_fn
         self._results = {}
 
     def benchmark(self) -> None:
@@ -88,31 +101,37 @@ class ModelComparison:
             self._results[model] = self._benchmark_model(model)
 
     def _benchmark_model(self, model: str) -> Dict[str, Any]:
-        """Benchmark a single model."""
+        """Benchmark a single model.
+
+        Cost/latency/provider come from PyVectorHound's static, published
+        model metadata table (real). Quality metrics come from
+        `self.quality_fn(model)` when supplied (real, user-measured); when
+        it isn't, they're left as `None` with `"quality_measured": False`
+        rather than a fabricated number.
+        """
         metadata = MODEL_METADATA.get(
             model, {"cost_per_1m": 0.0, "latency_ms": 0.0, "provider": "Unknown"}
         )
 
-        # Placeholder metrics (in production, would run actual benchmarks)
-        if self.model_type == "embedding":
-            return {
-                "model": model,
-                "f1_score": 0.72 + (0.01 * hash(model) % 10) / 100,
-                "precision": 0.75 + (0.01 * hash(model) % 10) / 100,
-                "recall": 0.68 + (0.01 * hash(model) % 10) / 100,
-                "latency_ms": metadata.get("latency_ms", 0),
-                "cost_per_1m": metadata.get("cost_per_1m", 0),
-                "provider": metadata.get("provider", "Unknown"),
-            }
+        quality: Dict[str, Optional[float]]
+        if self.quality_fn is not None:
+            quality = dict(self.quality_fn(model))
+            quality_measured = True
+        elif self.model_type == "embedding":
+            quality = {"f1_score": None, "precision": None, "recall": None}
+            quality_measured = False
         else:  # reranker
-            return {
-                "model": model,
-                "ndcg": 0.78 + (0.01 * hash(model) % 10) / 100,
-                "calibration": 0.91 + (0.01 * hash(model) % 10) / 100,
-                "latency_ms": metadata.get("latency_ms", 0),
-                "cost_per_1m": metadata.get("cost_per_1m", 0),
-                "provider": metadata.get("provider", "Unknown"),
-            }
+            quality = {"ndcg": None, "calibration": None}
+            quality_measured = False
+
+        return {
+            "model": model,
+            "latency_ms": metadata.get("latency_ms", 0),
+            "cost_per_1m": metadata.get("cost_per_1m", 0),
+            "provider": metadata.get("provider", "Unknown"),
+            "quality_measured": quality_measured,
+            **quality,
+        }
 
     def report(self) -> str:
         """
@@ -139,25 +158,29 @@ Benchmarking {len(self.candidates)} models on your corpus...
 
 """
 
-        # Sort by F1 score (or NDCG for reranker)
+        # Sort by F1 score (or NDCG for reranker); unmeasured models sort last.
         key_metric = "f1_score" if self.model_type == "embedding" else "ndcg"
         sorted_models = sorted(
-            self._results.items(), key=lambda x: x[1].get(key_metric, 0), reverse=True
+            self._results.items(),
+            key=lambda x: x[1].get(key_metric) if x[1].get(key_metric) is not None else -1.0,
+            reverse=True,
         )
 
-        report += f"{'Model':<30} {key_metric.upper():<10} Cost/1M   Latency  Rec.\n"
+        report += f"{'Model':<30} {key_metric.upper():<10} Cost/1M   Latency  Quality\n"
         report += "─" * 70 + "\n"
 
-        for i, (model_name, metrics) in enumerate(sorted_models, 1):
-            f1 = metrics.get(key_metric, 0)
+        for model_name, metrics in sorted_models:
+            f1 = metrics.get(key_metric)
+            f1_str = f"{f1:.2%}" if f1 is not None else "N/A"
             cost = metrics.get("cost_per_1m", 0)
             latency = metrics.get("latency_ms", 0)
-
-            stars = "⭐" * (3 if i == 1 else 2 if i == 2 else 1)
+            quality_note = (
+                "measured" if metrics.get("quality_measured") else "not measured (pass quality_fn)"
+            )
 
             report += (
-                f"{model_name:<30} {f1:.2%}       "
-                f"${cost:<6.2f}  {latency:.1f}ms  {stars}\n"
+                f"{model_name:<30} {f1_str:<10} "
+                f"${cost:<6.2f}  {latency:.1f}ms  {quality_note}\n"
             )
 
         report += "\nRECOMMENDATION:\n"
@@ -165,6 +188,12 @@ Benchmarking {len(self.candidates)} models on your corpus...
         report += f"→ Best quality: {frontier['best_quality']}\n"
         report += f"→ Best value: {frontier['best_value']}\n"
         report += f"→ Best budget: {frontier['best_budget']}\n"
+        if not any(m.get("quality_measured") for m in self._results.values()):
+            report += (
+                "\nNote: no quality_fn was supplied, so 'best quality'/'best value' above "
+                "are based on cost/latency only -- pass quality_fn to ModelComparison for "
+                "quality-aware ranking.\n"
+            )
 
         return report
 
@@ -201,14 +230,23 @@ Benchmarking {len(self.candidates)} models on your corpus...
         if not self._results:
             self.benchmark()
 
-        # Best quality: highest F1 / NDCG
+        # Best quality: highest F1 / NDCG among models with measured quality;
+        # falls back to lowest cost if no model has measured quality.
         key = "f1_score" if self.model_type == "embedding" else "ndcg"
-        best_quality = max(self._results.items(), key=lambda x: x[1].get(key, 0))[0]
+        measured = {
+            m: v for m, v in self._results.items() if v.get(key) is not None
+        }
+        if measured:
+            best_quality = max(measured.items(), key=lambda x: x[1][key])[0]
+        else:
+            best_quality = min(
+                self._results.items(), key=lambda x: x[1].get("cost_per_1m", float("inf"))
+            )[0]
 
-        # Best value: highest quality per dollar
+        # Best value: highest quality per dollar (only among measured models)
         best_value = None
         best_roi = 0
-        for model, metrics in self._results.items():
+        for model, metrics in measured.items():
             quality = metrics.get(key, 0)
             cost = metrics.get("cost_per_1m", 1)
             roi = quality / (cost + 0.01)  # Avoid division by zero

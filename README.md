@@ -1,117 +1,84 @@
 # PyVectorHound
 
-**Fix your RAG before it breaks production. Find retrieval bugs instantly.**
+**Diagnose why your RAG retrieval is returning the wrong documents.**
 
-Your RAG system is losing documents. PyVectorHound diagnoses why. Pinpoint indexing errors, embedding failures, ranking problems, and chunking mistakes—then get actionable fixes.
+PyVectorHound is a component-level diagnostic engine for retrieval-augmented
+generation (RAG) pipelines. Point it at a set of search results (from your
+own pipeline, or from a live Qdrant/Chroma/Milvus/pgvector/Weaviate
+instance) and it isolates *which stage* is failing — embedding quality or
+vector search ranking — and gives you plain-English, ranked recommendations.
 
 [![PyPI](https://img.shields.io/pypi/v/pyvectorhound)](https://pypi.org/project/pyvectorhound)
-[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org)
+[![Python 3.8+](https://img.shields.io/badge/Python-3.8%2B-blue)](https://www.python.org)
 [![Tests](https://github.com/Mullassery/PyVectorHound/actions/workflows/ci.yml/badge.svg)](https://github.com/Mullassery/PyVectorHound/actions/workflows/ci.yml)
 [![License: Proprietary](https://img.shields.io/badge/License-Proprietary-blue.svg)](./LICENSE)
 
 ---
 
-## 30-Second Start
+## What this actually does today
 
-```python
-from pyvectorhound import Hound
+PyVectorHound does **not** run an embedding model, a reranker, or BM25 for
+you, and it is **not** a vector database. It's a diagnostic layer that sits
+on top of retrieval results you already have (or that it fetches from your
+vector DB) and tells you, with real computed metrics, what's wrong:
 
-# Diagnose RAG failures
-hound = Hound(vector_db="pinecone", embeddings="openai")
+- **Embedding-space diagnostics** (isotropy, coverage, distinctiveness) —
+  computed by a Rust extension (`pyvectorhound._core`, built via PyO3) from
+  the real per-document embeddings your database adapter's `get_embeddings()`
+  returns.
+- **Vector search accuracy** (precision, recall, MRR) — computed against
+  `expected_docs` you supply as ground truth.
+- **Root cause + ranked recommendations** — plain-English output combining
+  the above.
 
-# Find what's wrong
-diagnosis = hound.diagnose(
-    query="How do I reset my password?",
-    expected_docs=["FAQ.md", "UserGuide.md"]
-)
+BM25 (keyword search) and reranker diagnostics are reported as `"UNKNOWN"`:
+PyVectorHound doesn't run a keyword-search index or a reranker itself, and
+`Diagnosis` doesn't yet accept external BM25/reranker scores as input, so
+rather than fabricate a number for a component it can't measure, it says so.
 
-print(f"Retrieval success: {diagnosis.success_rate:.0%}")
-print(f"Problems found: {len(diagnosis.issues)}")
-for issue in diagnosis.issues:
-    print(f"  - {issue.problem}: {issue.solution}")
-```
+If a component doesn't have enough input to measure honestly (no `adapter`,
+fewer than 2 documents with embeddings, or no `expected_docs`), it's
+reported as `"UNKNOWN"` with an explanation of what to supply — never a
+made-up number.
 
----
+**PyVectorHound does not bundle an embedding model.** If you want
+`Hound.diagnose()` to embed your query text for you, pass it an `embed_fn`
+(a thin wrapper around whatever you already use — OpenAI, Cohere,
+sentence-transformers, etc.). Without one, pass a precomputed
+`query_embedding` per call. It will not silently generate a random vector
+and pretend the resulting diagnosis means something.
 
-## Why PyVectorHound?
+### New: advanced retrieval ranking (Rust core)
 
-**The Problem:**
-- Your RAG system returns wrong documents
-- You don't know why (embedding issue? indexing? ranking?)
-- Debugging takes hours of manual work
-- No way to validate before launching
+`src/retrieval_ranking.rs` adds a `RetrievalRanker` that combines BM25,
+semantic, recency, and diversity signals into a single multi-criteria
+ranking, plus cross-encoder-style reranking support. It's compiled into the
+native `_core` extension but not yet exposed as a Python-callable function —
+if you need it from Python today, treat it as in-progress internal
+infrastructure rather than a public API.
 
-**The Solution:**
-- Automatic root cause diagnosis
-- Pinpoint the exact step that's failing
-- Get specific, actionable fixes
-- Validate RAG quality before production
+### Not yet real (known limitations)
 
----
+Being upfront about what's still a stub, rather than leaving it to look
+finished:
 
-## Key Features
-
-- **Root Cause Analysis:** Find where retrieval breaks (embedding, indexing, ranking, chunking)
-- **Quality Metrics:** Measure precision, recall, NDCG across your documents
-- **Fix Recommendations:** Get specific, code-ready solutions
-- **Before/After Testing:** Compare RAG quality across changes
-- **Multi-DB Support:** Pinecone, Weaviate, Qdrant, Milvus, Elasticsearch
-- **Embedding Validation:** Test different embedding models
-- **Batch Diagnostics:** Analyze 100s of queries at once
-
----
-
-## Real-World Use Cases
-
-**Before Launching:**
-```python
-# Validate RAG quality before production
-hound = Hound()
-quality = hound.validate_quality(
-    test_queries=100,
-    min_success_rate=0.85  # 85% minimum
-)
-
-if quality.success_rate < 0.85:
-    print(f"Not ready: {quality.issues}")
-    # Don't deploy
-```
-
-**Debugging Failures:**
-```python
-# Why did this query fail?
-diagnosis = hound.diagnose(
-    query="What's your return policy?",
-    actual_results=["Pricing.pdf"],  # Wrong!
-    expected_docs=["Returns.pdf", "Policy.md"]
-)
-
-# Get the fix
-print(diagnosis.root_cause)  # "Embeddings too similar"
-print(diagnosis.solution)    # "Use embedding model X instead"
-```
-
-**Comparing Approaches:**
-```python
-# Which embedding model is better?
-before = hound.quality_score(embedding_model="openai")
-after = hound.quality_score(embedding_model="cohere")
-
-improvement = (after - before) / before * 100
-print(f"Model improved quality by {improvement:.1f}%")
-```
-
----
-
-## Diagnostics It Runs
-
-| Issue | Detection | Fix |
-|-------|-----------|-----|
-| **Embedding** | Vectors too similar, not capturing meaning | Suggest better embedding model |
-| **Indexing** | Documents not in vector DB or corrupted | Rebuild index with validation |
-| **Ranking** | Right documents present but ranked low | Tune similarity metric or weights |
-| **Chunking** | Documents split wrong, breaking context | Adjust chunk size or overlap |
-| **Query** | Query phrasing doesn't match documents | Suggest rephrasing or expansion |
+- `ModelComparison` / `Hound.compare_models()` reports real, published
+  cost/latency metadata for known models, but has no way to measure quality
+  (F1/NDCG) on its own — pass `quality_fn` for real numbers, or it reports
+  quality as unmeasured.
+- `Hound.compare_metrics()`, `Hound.detect_drift()`, and
+  `QualityScorer.trend_analysis()` raise `NotImplementedError` — they have
+  no historical data store. Use `Hound.track_metric()` +
+  `Hound.get_trend_report()` (backed by the real, tested `TrendAnalyzer`)
+  instead.
+- Prebuilt wheels on PyPI currently cover macOS (arm64) only. Other
+  platforms install from the source distribution, which needs a Rust
+  toolchain to build the native extension (`maturin` handles this
+  automatically via `pip install`, but it does mean `cargo` must be
+  available).
+- OpenTelemetry / LangChain / LlamaIndex / MCP integrations, the CLI, and
+  the REST server exist and have passing tests but have seen far less
+  real-world use than the core `Hound`/`Diagnosis` path above.
 
 ---
 
@@ -119,33 +86,140 @@ print(f"Model improved quality by {improvement:.1f}%")
 
 ```bash
 pip install pyvectorhound
-# or with uv
-uv pip install pyvectorhound
+```
+
+Optional vector database clients (only install the one(s) you use):
+
+```bash
+pip install pyvectorhound[qdrant]     # Qdrant
+pip install pyvectorhound[chroma]     # Chroma
+pip install pyvectorhound[milvus]     # Milvus
+pip install pyvectorhound[weaviate]   # Weaviate
+pip install pyvectorhound[pgvector]   # PostgreSQL + pgvector
+```
+
+Requires Python 3.8+.
+
+---
+
+## Quick start: diagnose results you already have
+
+This is the fastest way to try it — no live database or embedding model
+needed. `Diagnosis` fetches per-document embeddings for you via a small
+adapter object (anything with a `get_embeddings(doc_ids) -> dict` method);
+without one, the embedding component honestly reports `"UNKNOWN"` instead
+of a fabricated score.
+
+```python
+from pyvectorhound import Diagnosis
+
+class InMemoryAdapter:
+    """Anything with get_embeddings(doc_ids) works -- swap in your own
+    QdrantAdapter/ChromaAdapter/etc., or a wrapper around your pipeline."""
+    def __init__(self, embeddings_by_id):
+        self._embeddings_by_id = embeddings_by_id
+
+    def get_embeddings(self, doc_ids):
+        return {d: self._embeddings_by_id[d] for d in doc_ids if d in self._embeddings_by_id}
+
+results = [
+    {"id": "pricing.pdf", "score": 0.91},
+    {"id": "onboarding.md", "score": 0.84},
+    {"id": "faq.md", "score": 0.79},
+]
+
+diagnosis = Diagnosis(
+    query="What's your return policy?",
+    results=results,
+    expected_docs=["returns.pdf", "policy.md"],  # ground truth
+    adapter=InMemoryAdapter(my_document_embeddings),
+)
+diagnosis.analyze()
+
+print(diagnosis.root_cause())
+for rec in diagnosis.recommendations():
+    print(f"[{rec['priority']}] {rec['action']}")
+
+print(diagnosis.hunt())  # full plain-English report
+```
+
+A runnable version (with synthetic embeddings so it works with no setup) is
+in [`examples/retrieval_debug.py`](examples/retrieval_debug.py).
+
+## Quick start: diagnose against a live vector database
+
+```python
+from pyvectorhound import Hound
+
+hound = Hound(
+    db="qdrant",                      # qdrant | chroma | milvus | weaviate | postgres
+    endpoint="localhost:6333",
+    index_name="documents",
+    # PyVectorHound doesn't ship an embedding model -- wrap whatever you use:
+    embed_fn=lambda text: my_embedding_client.embed(text),
+)
+
+diagnosis = hound.diagnose(
+    query="What's your return policy?",
+    expected_docs=["returns.pdf", "policy.md"],
+    top_k=5,
+)
+print(diagnosis.hunt())
+```
+
+`Hound` connects lazily — constructing it doesn't require a live server,
+only calling `diagnose()` (or another querying method) does. `diagnose()`
+already passes `self.adapter` into `Diagnosis`, so embedding-space
+diagnostics work out of the box against your real database.
+
+---
+
+## Diagnostics it runs
+
+| Component | What it measures | Requires |
+|---|---|---|
+| **Embedding** | Isotropy, coverage, distinctiveness of the retrieved documents' real embeddings | An `adapter` with `get_embeddings()`, and ≥2 retrieved documents |
+| **Vector search** | Precision, recall, MRR | `expected_docs` (ground truth) |
+| **BM25 (keyword)** | Not implemented — reports `UNKNOWN` | n/a |
+| **Reranker** | Not implemented — reports `UNKNOWN` | n/a |
+
+Every measured component is computed for real from the input you give it;
+nothing is guessed when the input isn't there.
+
+---
+
+## Other tools
+
+- `hound.quality_scorer()` — `QualityScorer` for scoring an embedding's
+  validity, and (given corpus neighbors via the adapter) real
+  isotropy/coverage/distinctiveness against the corpus.
+- `hound.benchmark()` — `PerformanceBenchmark` for latency percentiles and
+  database/embedding-model comparisons.
+- `hound.analyze_trends()` — `TrendAnalyzer` for tracking metrics over time
+  and detecting drift, regressions, and anomalies from real tracked values.
+- `hound.tracer()` / `hound.replayer()` — capture a retrieval pipeline run
+  and replay it under different configurations to compare recall/latency.
+
+See [`examples/`](examples/) for runnable scripts, and
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) / [`docs/GUIDE.md`](docs/GUIDE.md)
+for more detail.
+
+---
+
+## Development
+
+```bash
+git clone https://github.com/Mullassery/PyVectorHound.git
+cd PyVectorHound
+pip install maturin
+maturin develop --release   # builds the Rust extension in place
+pip install -e ".[dev]"
+pytest tests/ -v
 ```
 
 ---
 
-## Documentation
-
-- [Quick Diagnosis](docs/QUICKSTART.md) — Debug your first RAG issue
-- [Fixing RAG](docs/FIXES.md) — Solutions for common problems
-- [Quality Metrics](docs/METRICS.md) — How retrieval is scored
-- [Examples](examples/) — Real-world diagnostics
-
----
-
 ## License
 
-Proprietary License - Free to use with explicit attribution. See [LICENSE](LICENSE).
-
----
-
-**PyVectorHound v2.0.0** | RAG diagnostics & debugging | Python 3.10+
-
-## License
-
-MIT
-
----
-
-**MCP 2.0 Mega-Platform | v2.0.0 | Wheels-Only Distribution**
+Proprietary License — free to use with explicit attribution. See
+[LICENSE](LICENSE).

@@ -1,6 +1,6 @@
 """Main PyHound class for retrieval diagnostics."""
 
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Callable
 import numpy as np
 from pyvectorhound.database import get_adapter, VectorDB
 from pyvectorhound.diagnosis import Diagnosis
@@ -28,7 +28,14 @@ class Hound:
 
     Examples:
         >>> from pyvectorhound import Hound
-        >>> hound = Hound(db="qdrant", endpoint="localhost:6333")
+        >>> # PyVectorHound doesn't ship an embedding model -- either pass a
+        >>> # precomputed embedding per call, or give it a function that can
+        >>> # produce one (wrapping OpenAI, Cohere, sentence-transformers, etc.)
+        >>> hound = Hound(
+        ...     db="qdrant",
+        ...     endpoint="localhost:6333",
+        ...     embed_fn=lambda text: my_embedding_model.embed(text),
+        ... )
         >>> diagnosis = hound.diagnose(query="your query", top_k=5)
         >>> print(diagnosis.hunt())
     """
@@ -39,6 +46,7 @@ class Hound:
         endpoint: str = "localhost:6333",
         index_name: str = "documents",
         api_key: Optional[str] = None,
+        embed_fn: Optional[Callable[[str], np.ndarray]] = None,
         **kwargs: Any
     ):
         """
@@ -49,6 +57,11 @@ class Hound:
             endpoint: Database endpoint URL
             index_name: Index/collection name in the database
             api_key: Optional API key (if needed)
+            embed_fn: Optional callable that embeds a query string into a
+                vector (e.g. wrapping an OpenAI, Cohere, or
+                sentence-transformers client). PyVectorHound does not bundle
+                an embedding model itself. If not provided, `diagnose()`
+                requires a precomputed `query_embedding` on every call.
             **kwargs: Additional database-specific parameters
 
         Raises:
@@ -58,9 +71,14 @@ class Hound:
         self.endpoint = endpoint
         self.index_name = index_name
         self.api_key = api_key
+        self.embed_fn = embed_fn
         self.kwargs = kwargs
 
-        # Initialize database adapter
+        # Initialize database adapter. Connection is intentionally lazy: every
+        # adapter method (search/get_embeddings/corpus_size) already connects
+        # on first use if needed, so Hound() doesn't require the optional
+        # client library (e.g. qdrant-client) or a live server to be
+        # constructed -- only to actually query the database.
         self.adapter = get_adapter(
             db=self.db,
             endpoint=self.endpoint,
@@ -68,7 +86,6 @@ class Hound:
             api_key=self.api_key,
             **self.kwargs
         )
-        self.adapter.connect()
 
         # Initialize performance benchmarking and trend analysis
         self._benchmarker = PerformanceBenchmark(adapter=self.adapter)
@@ -92,7 +109,8 @@ class Hound:
 
         Args:
             query: The search query to diagnose
-            query_embedding: Optional pre-computed query embedding
+            query_embedding: Pre-computed query embedding. Required unless an
+                `embed_fn` was passed to `Hound()`.
             top_k: Number of results to retrieve and analyze
             expected_docs: Optional list of document IDs that should be retrieved (ground truth)
             verbose: If True, show detailed diagnostic information
@@ -100,16 +118,33 @@ class Hound:
         Returns:
             Diagnosis object with findings and recommendations
 
+        Raises:
+            ValueError: If no query_embedding is given and no embed_fn was
+                configured on this Hound instance. PyVectorHound does not
+                fabricate a random embedding -- a diagnosis run against a
+                meaningless vector would itself be meaningless.
+
         Examples:
             >>> diagnosis = hound.diagnose(query="quantum computing", top_k=5)
             >>> print(diagnosis.hunt())  # Plain English report
             >>> print(diagnosis.metrics())  # Raw metrics
             >>> print(diagnosis.recommendations())  # Ranked fixes
         """
-        # If embedding not provided, create a dummy one (in real use, would embed the query)
         if query_embedding is None:
-            # Placeholder: in production this would call the embedding model
-            query_embedding = np.random.randn(768).astype(np.float32)
+            if self.embed_fn is not None:
+                query_embedding = np.asarray(self.embed_fn(query), dtype=np.float32)
+            else:
+                raise ValueError(
+                    "diagnose() requires a query_embedding. PyVectorHound does not "
+                    "bundle an embedding model, so it cannot silently invent one -- "
+                    "that would make every diagnosis meaningless. Either pass "
+                    "query_embedding=<your embedding of `query`> to diagnose(), or "
+                    "pass embed_fn=<callable str -> vector> to Hound() so it can "
+                    "embed queries for you (e.g. wrapping OpenAI, Cohere, or "
+                    "sentence-transformers)."
+                )
+        else:
+            query_embedding = np.asarray(query_embedding, dtype=np.float32)
 
         # Search for results
         results = self.adapter.search(query_embedding, top_k=top_k)
@@ -174,29 +209,26 @@ class Hound:
         """
         Compare metrics before and after applying a change.
 
+        Hound keeps no historical record of past diagnoses by date, so it
+        has nothing to honestly compare `before` against `after` with. Use
+        `hound.track_metric()` after each `diagnose()` call to build a real
+        time series, then `hound.get_trend_report()` to compare periods for
+        real.
+
         Args:
             before: Timestamp or date of baseline (format: YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)
             after: Timestamp or date of comparison (same format)
 
-        Returns:
-            Dictionary with before/after metrics and analysis
-
-        Examples:
-            >>> improvement = hound.compare_metrics(
-            ...     before="2026-06-15",
-            ...     after="2026-06-20"
-            ... )
-            >>> print(improvement["breakdown"])
+        Raises:
+            NotImplementedError: Always -- this method has no backing data
+                store to answer the question honestly.
         """
-        return {
-            "before": before,
-            "after": after,
-            "breakdown": {
-                "overall_f1": {"before": 0.0, "after": 0.0, "change": 0.0},
-                "vector": {"precision": 0.0, "recall": 0.0},
-                "bm25": {"precision": 0.0, "recall": 0.0},
-            },
-        }
+        raise NotImplementedError(
+            f"compare_metrics() has no historical data to compare {before!r} "
+            f"against {after!r} -- Hound does not store past diagnoses. Use "
+            "track_metric() after each diagnose() call, then get_trend_report() "
+            "to compare periods for real."
+        )
 
     def quality_scorer(self) -> QualityScorer:
         """
@@ -220,28 +252,28 @@ class Hound:
         """
         Detect embedding quality drift over time.
 
+        This convenience method has no historical record to compare
+        `baseline_date` against `current_date` with. Use
+        `hound.analyze_trends()` (a real `TrendAnalyzer`) instead:
+        `track_metric()` after each `diagnose()` call to build a real time
+        series, then `TrendAnalyzer.detect_drift(metric_name)` for a real
+        statistical comparison.
+
         Args:
             baseline_date: Baseline date (format: YYYY-MM-DD)
             current_date: Current date (format: YYYY-MM-DD)
 
-        Returns:
-            Dictionary with drift analysis and recommendations
-
-        Examples:
-            >>> drift = hound.detect_drift(
-            ...     baseline_date="2026-01-01",
-            ...     current_date="2026-06-20"
-            ... )
-            >>> if drift["significant"]:
-            ...     print(drift["recommendation"])
+        Raises:
+            NotImplementedError: Always -- this method has no backing data
+                store to answer the question honestly.
         """
-        return {
-            "baseline_date": baseline_date,
-            "current_date": current_date,
-            "significant": False,
-            "amount": 0.0,
-            "recommendation": "No action needed",
-        }
+        raise NotImplementedError(
+            f"detect_drift() has no historical data to compare {baseline_date!r} "
+            f"against {current_date!r} -- Hound does not store past diagnoses. "
+            "Use hound.analyze_trends() (TrendAnalyzer): track_metric() after "
+            "each diagnose() call, then TrendAnalyzer.detect_drift(metric_name) "
+            "for a real statistical comparison."
+        )
 
     def benchmark(self) -> PerformanceBenchmark:
         """

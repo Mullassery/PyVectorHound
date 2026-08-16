@@ -29,7 +29,7 @@ class TestDiagnosis:
         report = diagnosis.hunt()
         assert isinstance(report, str)
         assert "quantum computing" in report
-        assert "PyHound" in report
+        assert "PyVectorHound" in report
 
     def test_metrics(self):
         """Test metrics retrieval."""

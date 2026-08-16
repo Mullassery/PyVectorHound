@@ -45,7 +45,10 @@ class TestHound:
         fake_adapter = FakeAdapter()
         hound.adapter = fake_adapter
 
-        diagnosis = hound.diagnose(query="quantum computing", top_k=3)
+        query_embedding = np.random.randn(8).astype(np.float32)
+        diagnosis = hound.diagnose(
+            query="quantum computing", query_embedding=query_embedding, top_k=3
+        )
 
         assert isinstance(diagnosis, Diagnosis)
         assert diagnosis.query == "quantum computing"
@@ -55,10 +58,36 @@ class TestHound:
         assert len(fake_adapter.search_calls) == 1
         assert fake_adapter.search_calls[0][1] == 3
 
-    def test_diagnose_generates_query_embedding_when_none_provided(self):
-        """diagnose() must actually call the adapter with a real embedding vector,
-        not silently skip the search when no embedding is supplied."""
+    def test_diagnose_without_embedding_or_embed_fn_raises(self):
+        """diagnose() must not silently fabricate a query embedding (e.g. a random
+        vector) when none is supplied -- a diagnosis run against a meaningless
+        vector would itself be meaningless. It should raise instead."""
         hound = Hound(db="qdrant")
+
+        class RecordingAdapter:
+            def __init__(self):
+                self.called = False
+
+            def search(self, query_embedding, top_k=5):
+                self.called = True
+                return []
+
+        recording_adapter = RecordingAdapter()
+        hound.adapter = recording_adapter
+
+        with pytest.raises(ValueError, match="query_embedding"):
+            hound.diagnose(query="no embedding provided")
+
+        assert recording_adapter.called is False
+
+    def test_diagnose_uses_embed_fn_when_no_embedding_given(self):
+        """If Hound was configured with embed_fn, diagnose() should use it to embed
+        the query rather than requiring a precomputed query_embedding."""
+
+        def fake_embed(text: str) -> np.ndarray:
+            return np.full(8, len(text), dtype=np.float32)
+
+        hound = Hound(db="qdrant", embed_fn=fake_embed)
 
         class RecordingAdapter:
             def __init__(self):
@@ -75,7 +104,9 @@ class TestHound:
 
         assert recording_adapter.received_embedding is not None
         assert isinstance(recording_adapter.received_embedding, np.ndarray)
-        assert recording_adapter.received_embedding.shape == (768,)
+        np.testing.assert_array_equal(
+            recording_adapter.received_embedding, fake_embed("no embedding provided")
+        )
 
     def test_quality_scorer(self):
         """Test quality scorer initialization."""

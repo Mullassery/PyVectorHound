@@ -4,6 +4,8 @@ import json
 import sys
 from typing import Optional, List
 
+import numpy as np
+
 from .hound import Hound
 from .comparison import ModelComparison
 
@@ -64,6 +66,7 @@ class CLIInterface:
         query: str,
         top_k: int = 5,
         expected_docs: Optional[List[str]] = None,
+        query_embedding: Optional[str] = None,
     ) -> dict:
         """Diagnose why retrieval is failing for a query.
 
@@ -72,6 +75,10 @@ class CLIInterface:
             query: Search query to diagnose
             top_k: Number of results to analyze (default: 5)
             expected_docs: Optional ground truth documents (JSON string)
+            query_embedding: Optional pre-computed query embedding, as a JSON
+                array string (e.g. "[0.1, 0.2, ...]"). Required unless the
+                Hound instance was created with an embed_fn -- PyVectorHound
+                does not fabricate embeddings.
 
         Returns:
             JSON response with diagnosis results
@@ -91,8 +98,13 @@ class CLIInterface:
                 except json.JSONDecodeError:
                     expected = expected_docs.split(",")
 
+            embedding = None
+            if query_embedding:
+                embedding = np.asarray(json.loads(query_embedding), dtype=np.float32)
+
             diagnosis = hound.diagnose(
                 query=query,
+                query_embedding=embedding,
                 top_k=top_k,
                 expected_docs=expected,
             )

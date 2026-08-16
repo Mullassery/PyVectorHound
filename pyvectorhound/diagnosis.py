@@ -215,7 +215,7 @@ class Diagnosis:
 
         report = f"""
 ═══════════════════════════════════════════════════════════════
-                    PyHound Diagnosis Report
+                PyVectorHound Diagnosis Report
 ═══════════════════════════════════════════════════════════════
 
 Query: "{self.query}"

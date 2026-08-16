@@ -168,7 +168,7 @@ pub fn compute_distinctiveness(embeddings: &[Vec<f32>]) -> f32 {
     // Distinctiveness combines low average similarity and high variance
     let distinctiveness = (1.0 - avg_sim.abs()) * (1.0 + variance.sqrt());
 
-    distinctiveness.min(1.0).max(0.0)
+    distinctiveness.clamp(0.0, 1.0)
 }
 
 /// Detect drift in embedding quality
@@ -266,11 +266,11 @@ pub fn compute_retrieval_metrics(
     };
 
     RetrievalMetrics {
-        precision: precision.max(0.0).min(1.0),
-        recall: recall.max(0.0).min(1.0),
-        f1_score: f1_score.max(0.0).min(1.0),
-        mrr: mrr.max(0.0).min(1.0),
-        ndcg: ndcg.max(0.0).min(1.0),
+        precision: precision.clamp(0.0, 1.0),
+        recall: recall.clamp(0.0, 1.0),
+        f1_score: f1_score.clamp(0.0, 1.0),
+        mrr: mrr.clamp(0.0, 1.0),
+        ndcg: ndcg.clamp(0.0, 1.0),
     }
 }
 

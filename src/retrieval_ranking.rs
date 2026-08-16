@@ -1,6 +1,11 @@
-/// PyVectorHound v1.3: Advanced Retrieval Ranking & Reranking
-///
-/// Multi-criteria ranking, cross-encoder reranking, and diversity optimization
+//! PyVectorHound v1.3: Advanced Retrieval Ranking & Reranking
+//!
+//! Multi-criteria ranking, cross-encoder reranking, and diversity optimization.
+//!
+//! Not yet exposed to Python via the `_core` extension module -- this is
+//! compiled infrastructure the Python API doesn't call into yet, hence the
+//! module-wide `dead_code` allowance below.
+#![allow(dead_code)]
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -35,15 +40,14 @@ impl RetrievalRanker {
     pub fn rank(&self, results: Vec<RetrievalResult>) -> Vec<RankedResult> {
         let mut ranked: Vec<RankedResult> = results
             .into_iter()
-            .enumerate()
-            .map(|(_, result)| {
+            .map(|result| {
                 let score = self._calculate_multi_criteria_score(&result);
                 RankedResult {
                     document_id: result.doc_id,
                     relevance_score: score,
-                    rank: 0,  // Will be updated
+                    rank: 0, // Will be updated
                     ranking_factors: result.scores,
-                    diversity_score: 0.5,  // Placeholder
+                    diversity_score: 0.5, // Placeholder
                 }
             })
             .collect();
@@ -80,7 +84,8 @@ impl RetrievalRanker {
 
             // Penalize results too similar to already-selected results
             let similarity_penalty = self._calculate_similarity_penalty(&result, &diversified);
-            let adjusted_score = result.relevance_score * (1.0 - similarity_penalty * self.diversity_weight);
+            let adjusted_score =
+                result.relevance_score * (1.0 - similarity_penalty * self.diversity_weight);
 
             let mut adjusted_result = result;
             adjusted_result.relevance_score = adjusted_score;
@@ -92,9 +97,13 @@ impl RetrievalRanker {
         diversified
     }
 
-    fn _calculate_similarity_penalty(&self, _result: &RankedResult, _selected: &[RankedResult]) -> f32 {
+    fn _calculate_similarity_penalty(
+        &self,
+        _result: &RankedResult,
+        _selected: &[RankedResult],
+    ) -> f32 {
         // Placeholder: would compute actual embedding similarity
-        0.1  // 10% penalty per similar result
+        0.1 // 10% penalty per similar result
     }
 }
 
@@ -105,8 +114,8 @@ pub struct RetrievalResult {
 }
 
 pub struct RerankerMetrics {
-    pub mrr: f32,          // Mean Reciprocal Rank
-    pub ndcg: f32,         // Normalized Discounted Cumulative Gain
+    pub mrr: f32,  // Mean Reciprocal Rank
+    pub ndcg: f32, // Normalized Discounted Cumulative Gain
     pub precision_at_k: f32,
     pub recall_at_k: f32,
     pub diversity_score: f32,
@@ -123,7 +132,10 @@ impl RerankerMetrics {
         let ndcg = Self::_calculate_ndcg(&top_k, relevant_docs);
 
         // Calculate Precision@K
-        let relevant_in_topk = top_k.iter().filter(|r| relevant_docs.contains(&r.document_id)).count();
+        let relevant_in_topk = top_k
+            .iter()
+            .filter(|r| relevant_docs.contains(&r.document_id))
+            .count();
         let precision_at_k = relevant_in_topk as f32 / k.min(top_k.len()) as f32;
 
         // Calculate Recall@K
@@ -153,7 +165,11 @@ impl RerankerMetrics {
     fn _calculate_ndcg(ranked: &[&RankedResult], relevant_docs: &[String]) -> f32 {
         let mut dcg = 0.0;
         for (i, result) in ranked.iter().enumerate() {
-            let is_relevant = if relevant_docs.contains(&result.document_id) { 1.0 } else { 0.0 };
+            let is_relevant = if relevant_docs.contains(&result.document_id) {
+                1.0
+            } else {
+                0.0
+            };
             dcg += is_relevant / ((i + 2) as f32).log2();
         }
 
@@ -163,7 +179,11 @@ impl RerankerMetrics {
             idcg += 1.0 / ((i + 2) as f32).log2();
         }
 
-        if idcg == 0.0 { 0.0 } else { dcg / idcg }
+        if idcg == 0.0 {
+            0.0
+        } else {
+            dcg / idcg
+        }
     }
 
     fn _calculate_diversity_score(ranked: &[&RankedResult]) -> f32 {
@@ -171,7 +191,8 @@ impl RerankerMetrics {
             return 0.0;
         }
 
-        let avg_diversity = ranked.iter().map(|r| r.diversity_score).sum::<f32>() / ranked.len() as f32;
+        let avg_diversity =
+            ranked.iter().map(|r| r.diversity_score).sum::<f32>() / ranked.len() as f32;
         avg_diversity
     }
 }
@@ -183,7 +204,13 @@ mod tests {
     #[test]
     fn test_ranker_creation() {
         let ranker = RetrievalRanker::new();
-        assert_eq!(ranker.bm25_weight + ranker.semantic_weight + ranker.recency_weight + ranker.diversity_weight, 1.0);
+        assert_eq!(
+            ranker.bm25_weight
+                + ranker.semantic_weight
+                + ranker.recency_weight
+                + ranker.diversity_weight,
+            1.0
+        );
     }
 
     #[test]

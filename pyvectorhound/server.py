@@ -2,6 +2,8 @@
 
 from typing import Dict, Any, Optional, List
 
+import numpy as np
+
 from .hound import Hound
 
 
@@ -52,8 +54,14 @@ class PyvectorhoundServer:
         query: str,
         top_k: int = 5,
         expected_docs: Optional[List[str]] = None,
+        query_embedding: Optional[List[float]] = None,
     ) -> Dict[str, Any]:
-        """Diagnose query retrieval."""
+        """Diagnose query retrieval.
+
+        `query_embedding` (a plain list of floats, since this is a JSON API)
+        must be supplied unless the underlying `Hound` was created with an
+        `embed_fn` -- PyVectorHound does not fabricate embeddings.
+        """
         if hound_id not in self.hounds:
             return {
                 "status": "error",
@@ -62,8 +70,14 @@ class PyvectorhoundServer:
 
         try:
             hound = self.hounds[hound_id]
+            embedding = (
+                np.asarray(query_embedding, dtype=np.float32)
+                if query_embedding is not None
+                else None
+            )
             diagnosis = hound.diagnose(
                 query=query,
+                query_embedding=embedding,
                 top_k=top_k,
                 expected_docs=expected_docs,
             )
