@@ -66,16 +66,28 @@ finished:
   cost/latency metadata for known models, but has no way to measure quality
   (F1/NDCG) on its own — pass `quality_fn` for real numbers, or it reports
   quality as unmeasured.
-- `Hound.compare_metrics()`, `Hound.detect_drift()`, and
-  `QualityScorer.trend_analysis()` raise `NotImplementedError` — they have
-  no historical data store. Use `Hound.track_metric()` +
-  `Hound.get_trend_report()` (backed by the real, tested `TrendAnalyzer`)
-  instead.
-- Prebuilt wheels on PyPI currently cover macOS (arm64) only. Other
-  platforms install from the source distribution, which needs a Rust
-  toolchain to build the native extension (`maturin` handles this
-  automatically via `pip install`, but it does mean `cargo` must be
-  available).
+- `Hound.compare_metrics()` and `Hound.detect_drift()` raise
+  `NotImplementedError`; `QualityScorer.trend_analysis()` instead returns a
+  dict with `"direction": "unknown"` and an explanation. None of the three
+  has a historical data store to compute a real trend from. Use
+  `Hound.track_metric()` + `Hound.get_trend_report()` (backed by the real,
+  tested `TrendAnalyzer`) instead.
+- As of v1.3.1, PyPI only carries a macOS arm64 / CPython 3.11 wheel and no
+  source distribution. On any other interpreter or OS, `pip install
+  pyvectorhound` does **not** build the current version from source — it
+  silently falls back to the last release that does have an sdist (currently
+  **1.3.0**, three releases behind), with no warning that you got an old
+  version. If you need the current release outside macOS arm64/CPython 3.11,
+  install straight from the repo instead, which does build the latest source
+  correctly (needs a Rust toolchain — `maturin`/`pip` handle the build, but
+  `cargo` must be available):
+  `pip install git+https://github.com/Mullassery/PyVectorHound.git`.
+- GitHub Actions CI (the badge above) is currently red on every job across
+  recent pushes to `main` — not because of failing tests, but because
+  `.github/workflows/ci.yml`'s `dtolnay/rust-toolchain@v1` step is missing
+  its required `toolchain` input, so every job fails in the setup step
+  before any code runs. The local test suite itself passes (159/159 as of
+  this writing, run via `pytest tests/ -v` with the Rust extension built).
 - OpenTelemetry / LangChain / LlamaIndex / MCP integrations, the CLI, and
   the REST server exist and have passing tests but have seen far less
   real-world use than the core `Hound`/`Diagnosis` path above.
