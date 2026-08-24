@@ -2,6 +2,31 @@
 
 All notable changes to PyVectorHound are documented in this file.
 
+## [1.4.0]
+
+### Added
+
+- **LLM-as-judge faithfulness / semantic contradiction scoring.** `Diagnosis`
+  accepts optional `document_texts` (doc_id -> text) and `llm_judge_fn`
+  (`(query, doc_texts) -> dict`) — mirrors the existing `embed_fn` pattern,
+  no LLM client bundled. Adds a `faithfulness` component to
+  `metrics()`/`hunt()`/`recommendations()`/`root_cause()` that catches
+  retrieved documents that are embedding-similar but semantically
+  contradict or are irrelevant to the query, a failure mode distance
+  metrics alone can't see. Reports `UNKNOWN` honestly when the required
+  inputs aren't supplied.
+- **`Hound.diagnose_batch()`** — runs many queries concurrently on a thread
+  pool instead of serially, for large-scale evaluation runs. `embed_fn`
+  and `llm_judge_fn` calls now retry with exponential backoff + jitter
+  (`pyvectorhound/_retry.py`).
+- **Dynamic threshold calibration.** `scorer.py` and `diagnosis.py`'s
+  GOOD/MODERATE/WEAK quality-status cutoffs now classify relative to a
+  tracked `TrendAnalyzer` baseline (z-score based) when one is available,
+  instead of a fixed numeric cutoff — so status doesn't silently drift
+  when you swap embedding models. Falls back to the original fixed
+  cutoffs on cold start (no baseline yet). `Hound.diagnose()` and
+  `Hound.quality_scorer()` wire this up automatically.
+
 ## [1.3.3] - Unreleased
 
 This release reconciles two independent fix passes that diverged from the

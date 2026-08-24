@@ -28,8 +28,21 @@ vector DB) and tells you, with real computed metrics, what's wrong:
   returns.
 - **Vector search accuracy** (precision, recall, MRR) — computed against
   `expected_docs` you supply as ground truth.
+- **LLM-as-judge faithfulness / contradiction checking** — pass
+  `document_texts` and an `llm_judge_fn` (no LLM client bundled, same
+  pattern as `embed_fn`) and `Diagnosis` will flag retrieved documents that
+  score well on embedding similarity but are actually irrelevant to or
+  contradict the query — the failure mode pure distance metrics can't see.
 - **Root cause + ranked recommendations** — plain-English output combining
   the above.
+- **Concurrent batch evaluation** — `Hound.diagnose_batch()` runs many
+  queries at once on a thread pool (with automatic retry/backoff on
+  `embed_fn`/`llm_judge_fn` calls) instead of one at a time, for large-scale
+  evaluation runs.
+- **Model-agnostic quality thresholds** — once you've tracked a few
+  diagnoses with `Hound.track_metric()`, GOOD/MODERATE/WEAK status is
+  computed relative to your own historical baseline instead of a fixed
+  cutoff, so it doesn't drift when you switch embedding models.
 
 BM25 (keyword search) and reranker diagnostics are reported as `"UNKNOWN"`:
 PyVectorHound doesn't run a keyword-search index or a reranker itself, and
@@ -72,16 +85,16 @@ finished:
   has a historical data store to compute a real trend from. Use
   `Hound.track_metric()` + `Hound.get_trend_report()` (backed by the real,
   tested `TrendAnalyzer`) instead.
-- As of v1.3.1, PyPI only carries a macOS arm64 / CPython 3.11 wheel and no
-  source distribution. On any other interpreter or OS, `pip install
-  pyvectorhound` does **not** build the current version from source — it
-  silently falls back to the last release that does have an sdist (currently
-  **1.3.0**, three releases behind), with no warning that you got an old
-  version. If you need the current release outside macOS arm64/CPython 3.11,
-  install straight from the repo instead, which does build the latest source
-  correctly (needs a Rust toolchain — `maturin`/`pip` handle the build, but
-  `cargo` must be available):
+- As of v1.4.0, PyPI carries a macOS arm64 / CPython 3.9 wheel plus a source
+  distribution (`sdist`). The wheel is still single-platform/single-ABI (no
+  `abi3` build yet — see below), but the sdist means `pip install
+  pyvectorhound` on any other interpreter or OS now builds the current
+  version from source instead of silently falling back to an old release,
+  as long as a Rust toolchain is available locally. If the sdist build
+  fails for you, install straight from the repo instead:
   `pip install git+https://github.com/Mullassery/PyVectorHound.git`.
+  A proper multi-platform wheel matrix (built in CI, `abi3` so one wheel
+  covers multiple CPython versions) is still open work.
 - GitHub Actions CI (the badge above) is currently red on every job across
   recent pushes to `main` — not because of failing tests, but because
   `.github/workflows/ci.yml`'s `dtolnay/rust-toolchain@v1` step is missing
@@ -192,11 +205,55 @@ diagnostics work out of the box against your real database.
 |---|---|---|
 | **Embedding** | Isotropy, coverage, distinctiveness of the retrieved documents' real embeddings | An `adapter` with `get_embeddings()`, and ≥2 retrieved documents |
 | **Vector search** | Precision, recall, MRR | `expected_docs` (ground truth) |
+| **Faithfulness** | LLM-judge contradiction/relevance check | `document_texts` + `llm_judge_fn` |
 | **BM25 (keyword)** | Not implemented — reports `UNKNOWN` | n/a |
 | **Reranker** | Not implemented — reports `UNKNOWN` | n/a |
 
 Every measured component is computed for real from the input you give it;
 nothing is guessed when the input isn't there.
+
+---
+
+## Faithfulness checking and batch evaluation
+
+```python
+from pyvectorhound import Hound
+
+def judge(query: str, doc_texts: list[str]) -> dict:
+    # Wrap whatever LLM client you already use -- PyVectorHound doesn't
+    # bundle one. Must return at least a "contradiction_score" (0.0-1.0,
+    # lower is more faithful) and/or "faithful"/"contradicted_count".
+    response = my_llm_client.judge_faithfulness(query, doc_texts)
+    return {
+        "contradiction_score": response.score,
+        "contradicted_count": response.contradicted,
+        "reasoning": response.explanation,
+    }
+
+hound = Hound(db="qdrant", embed_fn=my_embed_fn, llm_judge_fn=judge)
+
+diagnosis = hound.diagnose(
+    query="What's your return policy?",
+    document_texts={"returns.pdf": "...", "policy.md": "..."},  # doc_id -> text
+)
+print(diagnosis.metrics()["faithfulness"])
+
+# Evaluate many queries concurrently instead of one at a time:
+diagnoses = hound.diagnose_batch(
+    queries=["query 1", "query 2", "query 3"],
+    document_texts=[{"a": "..."}, None, {"b": "..."}],  # per-query, optional
+    max_workers=8,
+)
+```
+
+Track a few diagnoses over time and quality-status classification switches
+from a fixed cutoff to your own historical baseline automatically:
+
+```python
+hound.track_metric("vector_search_precision", diagnosis.metrics()["vector_search"]["precision"])
+# After ~5+ tracked points, later diagnose() calls classify status
+# (GOOD/MODERATE/WEAK) relative to that baseline instead of a fixed number.
+```
 
 ---
 
