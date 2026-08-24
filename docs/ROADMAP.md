@@ -39,6 +39,11 @@ None - v2.0.0 production-ready
 - [ ] Graceful degradation
 - [ ] Fallback mechanisms
 
+#### Diagnostic Accuracy
+- [ ] LLM-as-judge faithfulness / semantic contradiction scoring — diagnosis currently relies only on embedding-vector stats (isotropy/coverage/distinctiveness) and precision/recall/MRR; BM25 and reranker checks (`diagnosis.py`) are stubbed `UNKNOWN`, and `recommendations.py` accepts an `llm_client` param that is never called
+- [ ] Async/concurrent evaluation pipeline — `diagnosis.py`/`scorer.py`/`hound.py` are entirely synchronous with no batching, rate-limiting, or backoff; large evaluation runs (thousands of vectors, sequential API calls) will stall
+- [ ] Apply `TrendAnalyzer`-style dynamic baseline calibration (already used for drift/latency) to the hardcoded quality-score/precision thresholds in `scorer.py`/`diagnosis.py`, so they don't silently drift when the embedding model changes
+
 #### Architecture
 - [ ] Code refactoring (simplify hot paths)
 - [ ] Remove technical debt
