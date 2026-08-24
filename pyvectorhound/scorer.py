@@ -3,6 +3,9 @@
 from typing import Dict, Any, List, Optional
 import numpy as np
 
+from pyvectorhound.diagnosis import _status_from_baseline, _status_from_threshold
+from pyvectorhound.trend_analysis import TrendAnalyzer
+
 try:
     from pyvectorhound import _core
 except ImportError:
@@ -17,18 +20,44 @@ class QualityScorer:
     for detecting embedding degradation.
     """
 
-    def __init__(self, hound: Optional[Any] = None, adapter: Optional[Any] = None):
+    def __init__(
+        self,
+        hound: Optional[Any] = None,
+        adapter: Optional[Any] = None,
+        trend_analyzer: Optional[TrendAnalyzer] = None,
+    ):
         """
         Initialize QualityScorer.
 
         Args:
             hound: Optional Hound instance for corpus access
             adapter: Database adapter for corpus operations
+            trend_analyzer: Optional TrendAnalyzer with a tracked baseline
+                for "embedding_overall" (see `Diagnosis` for the same
+                pattern). When present, GOOD/MODERATE/WEAK is computed
+                relative to that baseline instead of the fixed 0.75/0.5
+                cutoff, so it doesn't drift when the embedding model
+                changes. `Hound.quality_scorer()` wires this up
+                automatically from `hound._trend_analyzer`.
         """
         self.hound = hound
         self.adapter = adapter
+        self.trend_analyzer = trend_analyzer
         self._cache = {}
         self._baseline_metrics = None
+
+    def _classify(self, overall: float) -> str:
+        if self.trend_analyzer is not None:
+            baseline = self.trend_analyzer._baseline_stats.get("embedding_overall")
+            if not baseline:
+                series = self.trend_analyzer.series.get("embedding_overall")
+                if series is not None and len(series.get_values()) >= 5:
+                    baseline = {"mean": series.mean(), "stddev": series.stddev()}
+            if baseline:
+                status = _status_from_baseline(overall, baseline["mean"], baseline["stddev"])
+                if status is not None:
+                    return status
+        return _status_from_threshold(overall, good=0.75, moderate=0.5)
 
     def score(self, embedding: np.ndarray) -> Dict[str, Any]:
         """
@@ -67,7 +96,7 @@ class QualityScorer:
             distinctiveness = _core.py_compute_distinctiveness(sample_vectors)
             overall = _core.py_compute_quality_score(sample_vectors)
 
-            status = "GOOD" if overall > 0.75 else "MODERATE" if overall > 0.5 else "WEAK"
+            status = self._classify(overall)
         else:
             isotropy = coverage = distinctiveness = overall = 0.0
             status = "UNKNOWN"
@@ -118,7 +147,7 @@ class QualityScorer:
             avg_coverage = _core.py_compute_coverage(sample_vectors)
             avg_distinctiveness = _core.py_compute_distinctiveness(sample_vectors)
             overall = _core.py_compute_quality_score(sample_vectors)
-            status = "GOOD" if overall > 0.75 else "MODERATE" if overall > 0.5 else "WEAK"
+            status = self._classify(overall)
         else:
             avg_isotropy = avg_coverage = avg_distinctiveness = 0.0
             status = "UNKNOWN"

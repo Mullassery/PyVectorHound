@@ -1,5 +1,6 @@
 """Main PyHound class for retrieval diagnostics."""
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Optional, List, Dict, Any, Callable
 import numpy as np
 from pyvectorhound.database import get_adapter, VectorDB
@@ -11,6 +12,7 @@ from pyvectorhound.trend_analysis import TrendAnalyzer
 from pyvectorhound.retrieval_tracing import RetrievalTracer
 from pyvectorhound.retrieval_replay import RetrievalReplayer
 from pyvectorhound.recommendations import RecommendationEngine
+from pyvectorhound._retry import call_with_backoff
 
 
 class Hound:
@@ -47,6 +49,7 @@ class Hound:
         index_name: str = "documents",
         api_key: Optional[str] = None,
         embed_fn: Optional[Callable[[str], np.ndarray]] = None,
+        llm_judge_fn: Optional[Callable[[str, List[str]], Dict[str, Any]]] = None,
         **kwargs: Any
     ):
         """
@@ -62,6 +65,10 @@ class Hound:
                 sentence-transformers client). PyVectorHound does not bundle
                 an embedding model itself. If not provided, `diagnose()`
                 requires a precomputed `query_embedding` on every call.
+            llm_judge_fn: Optional callable `(query, doc_texts) -> dict` that
+                runs an LLM-as-judge faithfulness/contradiction check (see
+                `Diagnosis.__init__`). Set once here and every `diagnose()`
+                call that's given `document_texts` will use it automatically.
             **kwargs: Additional database-specific parameters
 
         Raises:
@@ -72,6 +79,7 @@ class Hound:
         self.index_name = index_name
         self.api_key = api_key
         self.embed_fn = embed_fn
+        self.llm_judge_fn = llm_judge_fn
         self.kwargs = kwargs
 
         # Initialize database adapter. Connection is intentionally lazy: every
@@ -103,6 +111,7 @@ class Hound:
         top_k: int = 5,
         expected_docs: Optional[List[str]] = None,
         verbose: bool = False,
+        document_texts: Optional[Dict[str, str]] = None,
     ) -> Diagnosis:
         """
         Diagnose why retrieval is failing for a specific query.
@@ -114,6 +123,11 @@ class Hound:
             top_k: Number of results to retrieve and analyze
             expected_docs: Optional list of document IDs that should be retrieved (ground truth)
             verbose: If True, show detailed diagnostic information
+            document_texts: Optional doc_id -> text mapping for the results
+                this query will retrieve. Combined with the `llm_judge_fn`
+                passed to `Hound()`, enables the faithfulness/contradiction
+                check (see `Diagnosis.__init__`). Adapters don't expose
+                document text, so this has to come from the caller.
 
         Returns:
             Diagnosis object with findings and recommendations
@@ -132,7 +146,9 @@ class Hound:
         """
         if query_embedding is None:
             if self.embed_fn is not None:
-                query_embedding = np.asarray(self.embed_fn(query), dtype=np.float32)
+                query_embedding = np.asarray(
+                    call_with_backoff(self.embed_fn, query), dtype=np.float32
+                )
             else:
                 raise ValueError(
                     "diagnose() requires a query_embedding. PyVectorHound does not "
@@ -156,12 +172,105 @@ class Hound:
             expected_docs=expected_docs,
             adapter=self.adapter,
             query_embedding=query_embedding,
+            trend_analyzer=self._trend_analyzer,
+            document_texts=document_texts,
+            llm_judge_fn=self.llm_judge_fn,
         )
 
         # Analyze
         diagnosis.analyze()
 
         return diagnosis
+
+    def diagnose_batch(
+        self,
+        queries: List[str],
+        query_embeddings: Optional[List[Optional[np.ndarray]]] = None,
+        top_k: int = 5,
+        expected_docs: Optional[List[Optional[List[str]]]] = None,
+        document_texts: Optional[List[Optional[Dict[str, str]]]] = None,
+        max_workers: int = 8,
+    ) -> List[Diagnosis]:
+        """
+        Diagnose many queries concurrently.
+
+        A single `diagnose()` call is dominated by I/O: the adapter's vector
+        search is a network round trip, and (when `embed_fn`/`llm_judge_fn`
+        are configured) so are the embedding and LLM-judge calls. Running a
+        batch through `diagnose()` in a loop makes every one of those round
+        trips serial, which is what stalls large-scale evaluation runs
+        across thousands of queries. This runs each query's `diagnose()` on
+        a thread pool instead -- real concurrency for I/O-bound calls
+        without requiring every database adapter and caller-supplied
+        `embed_fn`/`llm_judge_fn` to be rewritten as `async`. Each
+        `embed_fn`/`llm_judge_fn` call already retries with exponential
+        backoff (see `diagnose()`), which matters more once many queries
+        are in flight at once against the same rate-limited API.
+
+        Args:
+            queries: Search queries to diagnose.
+            query_embeddings: Optional precomputed embedding per query
+                (same length as `queries`, entries may be None to fall back
+                to `embed_fn`). If omitted entirely, `embed_fn` is used for
+                every query.
+            top_k: Number of results to retrieve and analyze per query.
+            expected_docs: Optional ground-truth doc ids per query (same
+                length as `queries`, entries may be None).
+            document_texts: Optional doc_id -> text mapping per query (same
+                length as `queries`, entries may be None) for the
+                faithfulness check.
+            max_workers: Maximum number of queries diagnosed concurrently.
+
+        Returns:
+            List of Diagnosis objects, in the same order as `queries`. A
+            query whose diagnosis raised (e.g. embed_fn/llm_judge_fn failed
+            after retries) has its exception re-raised here, after every
+            other query in the batch has finished -- so one bad query
+            doesn't abandon partial work already done by the others.
+
+        Examples:
+            >>> diagnoses = hound.diagnose_batch(
+            ...     queries=["quantum computing", "machine learning"],
+            ...     max_workers=4,
+            ... )
+        """
+        n = len(queries)
+        query_embeddings = query_embeddings or [None] * n
+        expected_docs = expected_docs or [None] * n
+        document_texts = document_texts or [None] * n
+        if not (len(query_embeddings) == len(expected_docs) == len(document_texts) == n):
+            raise ValueError(
+                "queries, query_embeddings, expected_docs, and document_texts must "
+                "all be the same length when provided."
+            )
+
+        results: List[Optional[Diagnosis]] = [None] * n
+        errors: Dict[int, Exception] = {}
+
+        with ThreadPoolExecutor(max_workers=max(1, max_workers)) as pool:
+            future_to_index = {
+                pool.submit(
+                    self.diagnose,
+                    query=queries[i],
+                    query_embedding=query_embeddings[i],
+                    top_k=top_k,
+                    expected_docs=expected_docs[i],
+                    document_texts=document_texts[i],
+                ): i
+                for i in range(n)
+            }
+            for future in as_completed(future_to_index):
+                i = future_to_index[future]
+                try:
+                    results[i] = future.result()
+                except Exception as exc:  # noqa: BLE001 - surfaced to the caller below
+                    errors[i] = exc
+
+        if errors:
+            first_index = min(errors)
+            raise errors[first_index]
+
+        return results  # type: ignore[return-value]
 
     def compare_models(
         self,
@@ -242,7 +351,7 @@ class Hound:
             >>> quality = scorer.score(embedding_vector)
             >>> health = scorer.corpus_health()
         """
-        return QualityScorer(hound=self, adapter=self.adapter)
+        return QualityScorer(hound=self, adapter=self.adapter, trend_analyzer=self._trend_analyzer)
 
     def detect_drift(
         self,

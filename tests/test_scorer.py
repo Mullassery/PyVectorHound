@@ -97,6 +97,33 @@ class TestQualityScorerTrendAnalysis:
         assert trend["components"] == {}
 
 
+class TestQualityScorerDynamicCalibration:
+    """GOOD/MODERATE/WEAK classification should use a tracked TrendAnalyzer
+    baseline (relative, model-agnostic) instead of the fixed 0.75/0.5 cutoff
+    once one exists, same pattern as Diagnosis._classify(). Exercises
+    QualityScorer._classify() directly rather than going through score(),
+    since score()'s real computation depends on the compiled _core
+    extension being available in the test environment."""
+
+    def test_falls_back_to_fixed_cutoff_without_trend_analyzer(self):
+        scorer = QualityScorer()
+        assert scorer._classify(0.6) == "MODERATE"
+        assert scorer._classify(0.8) == "GOOD"
+        assert scorer._classify(0.3) == "WEAK"
+
+    def test_uses_baseline_when_trend_analyzer_has_one(self):
+        from pyvectorhound.trend_analysis import TrendAnalyzer
+
+        analyzer = TrendAnalyzer()
+        # 0.55 would be MODERATE under the fixed cutoff, but this corpus's
+        # own historical baseline is centered low with tight spread, so 0.55
+        # is actually GOOD relative to its own history.
+        analyzer.set_baseline("embedding_overall", {"mean": 0.4, "stddev": 0.05})
+
+        scorer = QualityScorer(trend_analyzer=analyzer)
+        assert scorer._classify(0.55) == "GOOD"
+
+
 class TestQualityScorerAnomalyDetection:
     """detect_anomalies() already did real statistics -- a quick sanity check
     that it still does, since it wasn't touched by this fix."""

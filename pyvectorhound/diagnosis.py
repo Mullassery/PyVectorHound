@@ -1,13 +1,37 @@
 """Diagnosis class for retrieval pipeline analysis."""
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Callable, Optional
 from dataclasses import dataclass
 import numpy as np
+
+from pyvectorhound.trend_analysis import TrendAnalyzer
+from pyvectorhound._retry import call_with_backoff as _call_with_backoff
 
 try:
     from pyvectorhound import _core
 except ImportError:
     _core = None
+
+
+def _status_from_threshold(value: float, good: float, moderate: float) -> str:
+    """Fixed-cutoff status classification (the cold-start fallback)."""
+    return "GOOD" if value > good else "MODERATE" if value > moderate else "WEAK"
+
+
+def _status_from_baseline(value: float, baseline_mean: float, baseline_stddev: float) -> Optional[str]:
+    """Classify `value` by how many standard deviations it sits from a tracked
+    baseline, instead of a fixed numeric cutoff. Returns None if the baseline
+    has no usable spread (e.g. a single sample), so callers can fall back to
+    the fixed-cutoff classification.
+    """
+    if baseline_stddev <= 0:
+        return None
+    z = (value - baseline_mean) / baseline_stddev
+    if z >= -0.5:
+        return "GOOD"
+    if z >= -1.5:
+        return "MODERATE"
+    return "WEAK"
 
 
 @dataclass
@@ -36,6 +60,9 @@ class Diagnosis:
         expected_docs: Optional[List[str]] = None,
         adapter: Optional[Any] = None,
         query_embedding: Optional[np.ndarray] = None,
+        trend_analyzer: Optional[TrendAnalyzer] = None,
+        document_texts: Optional[Dict[str, str]] = None,
+        llm_judge_fn: Optional[Callable[[str, List[str]], Dict[str, Any]]] = None,
     ):
         """
         Initialize Diagnosis.
@@ -46,12 +73,36 @@ class Diagnosis:
             expected_docs: Optional ground truth document IDs
             adapter: Database adapter for fetching additional data
             query_embedding: Query embedding vector
+            trend_analyzer: Optional TrendAnalyzer with historical baselines
+                (set via `track_metric()` on prior diagnoses). When a
+                baseline exists for a metric, status (GOOD/MODERATE/WEAK) is
+                computed from how many standard deviations the current value
+                sits from that baseline instead of a fixed numeric cutoff --
+                so thresholds stay meaningful across embedding-model
+                migrations rather than drifting silently. Falls back to
+                fixed cutoffs when no baseline is available yet (cold start).
+            document_texts: Optional doc_id -> text mapping for the
+                retrieved results. Required (together with llm_judge_fn) for
+                faithfulness/contradiction analysis -- PyVectorHound's
+                database adapters return ids/scores/embeddings, not document
+                text, so this has to come from the caller.
+            llm_judge_fn: Optional callable `(query, doc_texts) -> dict`
+                that runs an LLM-as-judge faithfulness/contradiction check
+                (e.g. wrapping an OpenAI/Anthropic call). Expected to return
+                a dict with a "faithful" bool and/or a numeric
+                "contradiction_score" (0.0 = fully consistent with the
+                query, 1.0 = contradicts it) per call. PyVectorHound does
+                not bundle an LLM client, matching how `embed_fn` works on
+                `Hound`.
         """
         self.query = query
         self.results = results
         self.expected_docs = expected_docs or []
         self.adapter = adapter
         self.query_embedding = query_embedding
+        self.trend_analyzer = trend_analyzer
+        self.document_texts = document_texts
+        self.llm_judge_fn = llm_judge_fn
         self._analysis = {}
 
     def analyze(self) -> None:
@@ -63,6 +114,7 @@ class Diagnosis:
         self._analysis["vector_search"] = self._analyze_vector_search()
         self._analysis["bm25"] = self._analyze_bm25()
         self._analysis["reranker"] = self._analyze_reranker()
+        self._analysis["faithfulness"] = self._analyze_faithfulness()
 
     def _analyze_embedding(self) -> Dict[str, Any]:
         """Analyze embedding quality using real per-document vectors.
@@ -118,7 +170,12 @@ class Diagnosis:
         distinctiveness = _core.py_compute_distinctiveness(vectors)
         overall = _core.py_compute_quality_score(vectors)
 
-        status = "GOOD" if overall > 0.75 else "MODERATE" if overall > 0.5 else "WEAK"
+        status = self._classify(
+            metric_name="embedding_overall",
+            value=overall,
+            fixed_good=0.75,
+            fixed_moderate=0.5,
+        )
 
         return {
             "status": status,
@@ -145,7 +202,12 @@ class Diagnosis:
             recall = tp / len(relevant) if relevant else 0.0
             mrr = self._compute_mrr(retrieved_ids, relevant)
 
-            status = "GOOD" if precision > 0.8 else "MODERATE" if precision > 0.5 else "WEAK"
+            status = self._classify(
+                metric_name="vector_search_precision",
+                value=precision,
+                fixed_good=0.8,
+                fixed_moderate=0.5,
+            )
 
             return {
                 "status": status,
@@ -162,6 +224,26 @@ class Diagnosis:
             "mrr": 0.0,
             "explanation": "Provide expected_docs for ground truth comparison.",
         }
+
+    def _classify(self, metric_name: str, value: float, fixed_good: float, fixed_moderate: float) -> str:
+        """Classify `value` as GOOD/MODERATE/WEAK.
+
+        Uses the tracked baseline for `metric_name` on `self.trend_analyzer`
+        when one exists (relative, model-agnostic classification that
+        doesn't drift when the embedding model changes), otherwise falls
+        back to the fixed cutoff the caller supplies.
+        """
+        if self.trend_analyzer is not None:
+            baseline = self.trend_analyzer._baseline_stats.get(metric_name)
+            if not baseline:
+                series = self.trend_analyzer.series.get(metric_name)
+                if series is not None and len(series.get_values()) >= 5:
+                    baseline = {"mean": series.mean(), "stddev": series.stddev()}
+            if baseline:
+                status = _status_from_baseline(value, baseline["mean"], baseline["stddev"])
+                if status is not None:
+                    return status
+        return _status_from_threshold(value, fixed_good, fixed_moderate)
 
     @staticmethod
     def _compute_mrr(retrieved_ids: List[str], relevant_ids: set) -> float:
@@ -197,6 +279,77 @@ class Diagnosis:
             "calibration": 0.0,
             "ndcg": 0.0,
             "explanation": "No reranker scores were provided; reranker quality not measured.",
+        }
+
+    def _analyze_faithfulness(self) -> Dict[str, Any]:
+        """LLM-as-judge faithfulness / semantic contradiction check.
+
+        Distance-based and lexical metrics (embedding isotropy, BM25
+        precision) can't catch a retrieved document that's topically
+        similar but actually contradicts or is irrelevant to the query --
+        that needs a semantic judgment call. This runs one when the caller
+        supplies both `document_texts` (adapters don't expose document
+        text, only ids/scores/embeddings) and `llm_judge_fn` (PyVectorHound
+        doesn't bundle an LLM client). Honestly reports UNKNOWN, like BM25
+        and reranker above, when either input is missing rather than
+        fabricating a score.
+        """
+        if self.llm_judge_fn is None or not self.document_texts or not self.results:
+            missing = []
+            if self.llm_judge_fn is None:
+                missing.append("llm_judge_fn")
+            if not self.document_texts:
+                missing.append("document_texts")
+            return {
+                "status": "UNKNOWN",
+                "contradiction_score": 0.0,
+                "faithful_count": 0,
+                "contradicted_count": 0,
+                "explanation": (
+                    f"Faithfulness not measured -- missing {' and '.join(missing) or 'results'}. "
+                    "Pass document_texts and llm_judge_fn to check for semantic "
+                    "contradictions an embedding-distance metric would miss."
+                ),
+            }
+
+        doc_ids = [str(r["id"]) for r in self.results]
+        doc_texts = [self.document_texts[d] for d in doc_ids if d in self.document_texts]
+
+        if not doc_texts:
+            return {
+                "status": "UNKNOWN",
+                "contradiction_score": 0.0,
+                "faithful_count": 0,
+                "contradicted_count": 0,
+                "explanation": "None of the retrieved document ids had a matching entry in document_texts.",
+            }
+
+        judgment = _call_with_backoff(self.llm_judge_fn, self.query, doc_texts)
+
+        faithful_count = int(judgment.get("faithful_count", 0))
+        contradicted_count = int(judgment.get("contradicted_count", 0))
+        contradiction_score = float(judgment.get("contradiction_score", 0.0))
+
+        # A single aggregate judgment (no per-doc counts) still tells us
+        # something -- treat "faithful": False as one contradicted doc.
+        if "faithful_count" not in judgment and "contradicted_count" not in judgment:
+            if judgment.get("faithful", contradiction_score < 0.5):
+                faithful_count, contradicted_count = len(doc_texts), 0
+            else:
+                faithful_count, contradicted_count = 0, len(doc_texts)
+
+        status = "GOOD" if contradiction_score < 0.2 else "MODERATE" if contradiction_score < 0.5 else "WEAK"
+
+        return {
+            "status": status,
+            "contradiction_score": contradiction_score,
+            "faithful_count": faithful_count,
+            "contradicted_count": contradicted_count,
+            "explanation": judgment.get(
+                "reasoning",
+                f"{contradicted_count} of {len(doc_texts)} retrieved documents flagged as "
+                f"contradicting or irrelevant to the query by the LLM judge.",
+            ),
         }
 
     def hunt(self) -> str:
@@ -240,6 +393,10 @@ BM25 (KEYWORD): {self._analysis.get("bm25", {}).get("status", "UNKNOWN")}
 RERANKER: {self._analysis.get("reranker", {}).get("status", "UNKNOWN")}
   Calibration: {self._analysis.get("reranker", {}).get("calibration", 0.0):.1%}
   NDCG@5: {self._analysis.get("reranker", {}).get("ndcg", 0.0):.2f}
+
+FAITHFULNESS (LLM JUDGE): {self._analysis.get("faithfulness", {}).get("status", "UNKNOWN")}
+  Contradiction score: {self._analysis.get("faithfulness", {}).get("contradiction_score", 0.0):.1%} (lower is better)
+  Contradicted docs: {self._analysis.get("faithfulness", {}).get("contradicted_count", 0)}
 
 ROOT CAUSE
 ─────────────────────────────────────────────────────────────
@@ -310,6 +467,32 @@ RECOMMENDATIONS
                 }
             )
 
+        # Check faithfulness (LLM-judge contradiction check)
+        faithfulness = self._analysis.get("faithfulness", {})
+        if faithfulness.get("status") == "WEAK":
+            recs.append(
+                {
+                    "priority": "HIGH",
+                    "action": (
+                        f"{faithfulness.get('contradicted_count', 0)} retrieved document(s) "
+                        "contradict or are irrelevant to the query despite high embedding "
+                        "similarity -- review chunking (over-broad chunks) or add a "
+                        "reranker/filter stage before generation"
+                    ),
+                    "impact": "Reduces hallucination risk from unfaithful context",
+                    "cost": "None (LLM judge already run)",
+                }
+            )
+        elif faithfulness.get("status") == "MODERATE":
+            recs.append(
+                {
+                    "priority": "MEDIUM",
+                    "action": "Some retrieved documents were flagged as borderline by the LLM judge -- monitor contradiction_score over time",
+                    "impact": "Preventive",
+                    "cost": "None",
+                }
+            )
+
         if not recs:
             recs.append(
                 {
@@ -340,8 +523,19 @@ RECOMMENDATIONS
         embedding = self._analysis.get("embedding", {})
         vector = self._analysis.get("vector_search", {})
         bm25 = self._analysis.get("bm25", {})
+        faithfulness = self._analysis.get("faithfulness", {})
 
-        if embedding.get("status") == "WEAK":
+        # A high embedding/vector-search score with a contradiction flagged
+        # by the LLM judge is exactly the "similar but wrong" failure mode
+        # distance metrics can't see on their own -- surface it first.
+        if faithfulness.get("status") == "WEAK" and embedding.get("status") in ("GOOD", "MODERATE"):
+            return (
+                f"{faithfulness.get('contradicted_count', 0)} retrieved document(s) score well "
+                "on embedding similarity but were flagged by the LLM judge as contradicting or "
+                "irrelevant to the query -- this is a semantic mismatch that distance metrics "
+                "alone can't catch. Review chunk boundaries and consider a reranker/filter stage."
+            )
+        elif embedding.get("status") == "WEAK":
             return (
                 "Your embedding model doesn't understand domain-specific concepts. "
                 "Consider upgrading to a larger or domain-specific model."

@@ -128,5 +128,96 @@ class TestDiagnosis:
         assert "test query" in report
 
 
+class TestDiagnoseBatch:
+    """diagnose_batch() runs multiple queries concurrently via a thread pool
+    instead of one at a time, so a large evaluation pass doesn't serialize
+    every network round trip."""
+
+    def _hound_with_fake_adapter(self):
+        import threading
+
+        hound = Hound(db="qdrant")
+
+        class FakeAdapter:
+            def __init__(self):
+                self.lock = threading.Lock()
+                self.concurrent_calls = 0
+                self.max_concurrent_calls = 0
+
+            def search(self, query_embedding, top_k=5):
+                with self.lock:
+                    self.concurrent_calls += 1
+                    self.max_concurrent_calls = max(self.max_concurrent_calls, self.concurrent_calls)
+                try:
+                    import time
+
+                    time.sleep(0.02)  # simulate network latency
+                    return [{"id": "doc_1", "score": 0.9, "embedding": query_embedding}]
+                finally:
+                    with self.lock:
+                        self.concurrent_calls -= 1
+
+            def get_embeddings(self, doc_ids):
+                return {}
+
+        adapter = FakeAdapter()
+        hound.adapter = adapter
+        return hound, adapter
+
+    def test_returns_diagnosis_per_query_in_order(self):
+        hound, adapter = self._hound_with_fake_adapter()
+        embeddings = [np.random.randn(4).astype(np.float32) for _ in range(5)]
+
+        diagnoses = hound.diagnose_batch(
+            queries=[f"query {i}" for i in range(5)],
+            query_embeddings=embeddings,
+            max_workers=4,
+        )
+
+        assert len(diagnoses) == 5
+        assert all(isinstance(d, Diagnosis) for d in diagnoses)
+        assert [d.query for d in diagnoses] == [f"query {i}" for i in range(5)]
+
+    def test_runs_queries_concurrently_not_serially(self):
+        hound, adapter = self._hound_with_fake_adapter()
+        embeddings = [np.random.randn(4).astype(np.float32) for _ in range(6)]
+
+        hound.diagnose_batch(
+            queries=[f"query {i}" for i in range(6)],
+            query_embeddings=embeddings,
+            max_workers=6,
+        )
+
+        # If diagnose_batch were secretly serial, at most 1 call would ever
+        # be in flight at once.
+        assert adapter.max_concurrent_calls > 1
+
+    def test_mismatched_list_lengths_raise(self):
+        hound, _ = self._hound_with_fake_adapter()
+
+        with pytest.raises(ValueError, match="same length"):
+            hound.diagnose_batch(
+                queries=["a", "b"],
+                query_embeddings=[np.zeros(4, dtype=np.float32)],
+            )
+
+    def test_one_failing_query_does_not_lose_others_result(self):
+        """A query that fails (e.g. no embedding available) should surface its
+        error, but every other query's work shouldn't be silently discarded --
+        this test asserts the successful ones actually ran (via the adapter's
+        call count) even though the batch call ultimately raises."""
+        hound, adapter = self._hound_with_fake_adapter()
+
+        with pytest.raises(ValueError):
+            hound.diagnose_batch(
+                queries=["good query", "bad query"],
+                query_embeddings=[np.zeros(4, dtype=np.float32), None],
+            )
+
+        # The good query's search should still have gone through even though
+        # the batch as a whole raises for the bad one (no embed_fn configured).
+        assert adapter.max_concurrent_calls >= 1
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

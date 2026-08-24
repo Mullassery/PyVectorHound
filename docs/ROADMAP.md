@@ -40,9 +40,9 @@ None - v2.0.0 production-ready
 - [ ] Fallback mechanisms
 
 #### Diagnostic Accuracy
-- [ ] LLM-as-judge faithfulness / semantic contradiction scoring — diagnosis currently relies only on embedding-vector stats (isotropy/coverage/distinctiveness) and precision/recall/MRR; BM25 and reranker checks (`diagnosis.py`) are stubbed `UNKNOWN`, and `recommendations.py` accepts an `llm_client` param that is never called
-- [ ] Async/concurrent evaluation pipeline — `diagnosis.py`/`scorer.py`/`hound.py` are entirely synchronous with no batching, rate-limiting, or backoff; large evaluation runs (thousands of vectors, sequential API calls) will stall
-- [ ] Apply `TrendAnalyzer`-style dynamic baseline calibration (already used for drift/latency) to the hardcoded quality-score/precision thresholds in `scorer.py`/`diagnosis.py`, so they don't silently drift when the embedding model changes
+- [x] LLM-as-judge faithfulness / semantic contradiction scoring — `Diagnosis` accepts optional `document_texts` + `llm_judge_fn` (mirrors the existing `embed_fn` pattern: PyVectorHound doesn't bundle an LLM client); `_analyze_faithfulness()` calls the judge and surfaces a `faithfulness` component in `metrics()`/`hunt()`/`recommendations()`/`root_cause()`. Honestly reports `UNKNOWN` when either input is missing, same as BM25/reranker. `recommendations.py`'s unused `llm_client` param is a separate, still-open item.
+- [x] Async/concurrent evaluation pipeline — added `Hound.diagnose_batch()`, which runs multiple `diagnose()` calls on a `ThreadPoolExecutor` instead of serially. Real `asyncio` would require rewriting every synchronous database adapter (`database.py`); threading gives real concurrency for the actual bottleneck (network I/O — vector search + embed_fn + llm_judge_fn calls) without that rewrite. `embed_fn`/`llm_judge_fn` calls now retry with exponential backoff + jitter (`_retry.py`), which matters once many queries are in flight against the same rate-limited API at once.
+- [x] Apply `TrendAnalyzer`-style dynamic baseline calibration to the hardcoded quality-score/precision thresholds in `scorer.py`/`diagnosis.py` — both now classify GOOD/MODERATE/WEAK relative to a tracked `TrendAnalyzer` baseline (z-score based, via `_status_from_baseline`) when one exists, falling back to the original fixed cutoffs on cold start. `Hound.diagnose()`/`Hound.quality_scorer()` wire this up automatically from `hound._trend_analyzer`.
 
 #### Architecture
 - [ ] Code refactoring (simplify hot paths)
