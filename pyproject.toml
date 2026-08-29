@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "pyvectorhound"
-version = "1.4.0"
+version = "1.5.0"
 description = "Diagnostic tool for vector search failures in RAG and LLM systems. Evaluate embedding quality, analyze vector search rank correlation, benchmark BM25 vs semantic search, profile reranker performance. Identify root cause of retrieval failures."
 readme = "README.md"
 requires-python = ">=3.8"
@@ -93,6 +93,7 @@ Discussions = "https://github.com/Mullassery/Pyvectorhound/discussions"
 [tool.maturin]
 module-name = "pyvectorhound._core"
 features = ["pyo3/extension-module"]
+include = ["LICENSE"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -2,6 +2,18 @@
 
 All notable changes to PyVectorHound are documented in this file.
 
+## [1.5.0]
+
+### Added
+
+- **int8 scalar quantization** (`src/quantization.rs`) — per-vector min/max
+  linear quantization to `i8`, with `quantize`/`dequantize` (and batch
+  variants) exposed via PyO3. 4x memory reduction vs `f32` for large local
+  vector indices, with measured reconstruction error (0.0039 max on a
+  384-dim `[-1,1]` test vector) within the theoretical 8-bit bound
+  (`range/255`). SIMD/GPU acceleration is a separate, larger effort and
+  intentionally out of scope here.
+
 ## [1.4.0]
 
 ### Added

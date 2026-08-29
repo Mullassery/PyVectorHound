@@ -70,6 +70,50 @@ native `_core` extension but not yet exposed as a Python-callable function —
 if you need it from Python today, treat it as in-progress internal
 infrastructure rather than a public API.
 
+### New: int8 scalar quantization (Rust core)
+
+`src/quantization.rs` adds per-vector int8 scalar quantization for shrinking
+the memory footprint of large local vector indices. Each `f32` vector is
+mapped linearly to the `i8` range (-128..=127) using that vector's own
+min/max, alongside a `(scale, offset)` pair needed to dequantize it back to
+an approximate `f32` vector. This is scalar quantization, not product
+quantization, and it isn't SIMD/GPU accelerated — both are out of scope for
+this feature.
+
+**Tradeoff:** storing `i8` instead of `f32` is a **4x memory reduction**
+for the vector data (1 byte/dim vs 4 bytes/dim), at the cost of bounded
+reconstruction error — max absolute error per element is at most
+`(max - min) / 255` for the vector being quantized (half a quantization
+step in practice). For a typical normalized embedding in `[-1, 1]`, that's
+a worst-case error bound of about `0.0078` per dimension; measured max
+error on a random 384-dim `[-1, 1]` vector in the test suite was `~0.0039`.
+Constant vectors (including all-zero) round-trip exactly.
+
+Exposed to Python via `pyvectorhound._core`:
+
+```python
+from pyvectorhound import _core
+
+# Single vector
+result = _core.py_quantize_vector([0.12, -0.87, 0.5, 0.0])
+# {"values": [i8, ...], "scale": float, "offset": float, "min": float, "max": float}
+restored = _core.py_dequantize_vector(result["values"], result["scale"], result["offset"])
+
+# Batch (one scale/offset per vector)
+batch = _core.py_quantize_batch([[0.1, 0.2], [-1.0, 1.0]])
+# {"values": [[i8, ...], ...], "params": [{"scale":..., "offset":..., "min":..., "max":...}, ...]}
+restored_batch = _core.py_dequantize_batch(
+    batch["values"],
+    [p["scale"] for p in batch["params"]],
+    [p["offset"] for p in batch["params"]],
+)
+```
+
+This is currently a low-level building block (quantize/dequantize
+primitives) rather than integrated into `Hound`'s storage/retrieval path —
+if you want quantized on-disk storage for your own index today, call these
+functions directly.
+
 ### Not yet real (known limitations)
 
 Being upfront about what's still a stub, rather than leaving it to look
