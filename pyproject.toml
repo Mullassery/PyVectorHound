@@ -70,7 +70,7 @@ weaviate = ["weaviate-client>=3.24,<4"]
 postgres = ["psycopg2-binary>=2.9,<3"]
 pgvector = ["psycopg2-binary>=2.9,<3"]
 dev = [
-    "pytest>=7.0,<9",
+    "pytest>=7.0,<10",
     "pytest-cov>=4.0,<7",
     "mypy>=1.0,<2",
     "black>=23.0,<26",
