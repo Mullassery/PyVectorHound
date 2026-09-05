@@ -3,7 +3,7 @@ name = "pyvectorhound"
 version = "1.5.0"
 edition = "2021"
 authors = ["Georgi Mammen Mullassery <mullassery@gmail.com>"]
-license = "Proprietary"
+license = "Apache-2.0"
 description = "Vector search diagnostics engine for RAG/LLM systems"
 
 [dependencies]

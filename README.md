@@ -11,7 +11,7 @@ vector search ranking — and gives you plain-English, ranked recommendations.
 [![PyPI](https://img.shields.io/pypi/v/pyvectorhound)](https://pypi.org/project/pyvectorhound)
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8%2B-blue)](https://www.python.org)
 [![Tests](https://github.com/Mullassery/PyVectorHound/actions/workflows/ci.yml/badge.svg)](https://github.com/Mullassery/PyVectorHound/actions/workflows/ci.yml)
-[![License: Proprietary](https://img.shields.io/badge/License-Proprietary-blue.svg)](./LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
 
 ---
 
@@ -334,5 +334,4 @@ pytest tests/ -v
 
 ## License
 
-Proprietary License — free to use with explicit attribution. See
-[LICENSE](LICENSE).
+This project is licensed under the [Apache License 2.0](LICENSE).
