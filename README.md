@@ -15,6 +15,23 @@ vector search ranking — and gives you plain-English, ranked recommendations.
 
 ---
 
+## Use cases
+
+- **A RAG pipeline is returning irrelevant documents and you don't know
+  whether it's the embeddings or the ranking** — `Diagnosis`/`Hound.diagnose()`
+  isolates which stage is at fault instead of forcing you to eyeball
+  cosine-similarity scores.
+- **Catching retrieved documents that look similar but contradict the
+  query** — the LLM-as-judge faithfulness check, when pure distance metrics
+  would score them as a good match.
+- **Comparing embedding models or database configs objectively** — track
+  metrics over time with `Hound.track_metric()` so quality thresholds are
+  relative to your own baseline, not a hardcoded cutoff.
+- **Not yet a good fit for:** diagnosing BM25/keyword-search or reranker
+  stages specifically (both report `UNKNOWN` — not implemented, not
+  guessed); a fully automated model-comparison quality score without
+  supplying your own `quality_fn`.
+
 ## What this actually does today
 
 PyVectorHound does **not** run an embedding model, a reranker, or BM25 for
@@ -129,8 +146,8 @@ finished:
   has a historical data store to compute a real trend from. Use
   `Hound.track_metric()` + `Hound.get_trend_report()` (backed by the real,
   tested `TrendAnalyzer`) instead.
-- As of v1.4.0, PyPI carries a macOS arm64 / CPython 3.9 wheel plus a source
-  distribution (`sdist`). The wheel is still single-platform/single-ABI (no
+- As of v1.5.0 (current), PyPI carries a macOS arm64 / CPython 3.11 wheel
+  plus a source distribution (`sdist`). The wheel is still single-platform/single-ABI (no
   `abi3` build yet — see below), but the sdist means `pip install
   pyvectorhound` on any other interpreter or OS now builds the current
   version from source instead of silently falling back to an old release,
@@ -139,12 +156,12 @@ finished:
   `pip install git+https://github.com/Mullassery/PyVectorHound.git`.
   A proper multi-platform wheel matrix (built in CI, `abi3` so one wheel
   covers multiple CPython versions) is still open work.
-- GitHub Actions CI (the badge above) is currently red on every job across
-  recent pushes to `main` — not because of failing tests, but because
-  `.github/workflows/ci.yml`'s `dtolnay/rust-toolchain@v1` step is missing
-  its required `toolchain` input, so every job fails in the setup step
-  before any code runs. The local test suite itself passes (159/159 as of
-  this writing, run via `pytest tests/ -v` with the Rust extension built).
+- GitHub Actions CI (the badge above) is green as of this pass — a prior
+  revision of this note described the `dtolnay/rust-toolchain` setup step
+  as broken (missing `toolchain` input), but `ci.yml` already uses the
+  `@stable` form, which doesn't need one; CI has passed on every push since
+  the fix. The full test suite passes (174/174 as of this writing, run via
+  `pytest tests/ -v` with the Rust extension built).
 - OpenTelemetry / LangChain / LlamaIndex / MCP integrations, the CLI, and
   the REST server exist and have passing tests but have seen far less
   real-world use than the core `Hound`/`Diagnosis` path above.
