@@ -1,4 +1,4 @@
-// PyHound Core - Rust implementation of retrieval diagnostics
+// PyVectorHound Core - Rust implementation of retrieval diagnostics
 //
 // High-performance embedding quality metrics, pipeline analysis, and diagnostics.
 
@@ -178,7 +178,7 @@ fn py_dequantize_batch(
     Ok(dequantize_batch(&values, &params))
 }
 
-/// PyHound Python module
+/// PyVectorHound Python module
 #[pymodule]
 fn _core(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_compute_isotropy, m)?)?;

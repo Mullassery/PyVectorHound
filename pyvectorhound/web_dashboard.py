@@ -447,7 +447,7 @@ class Dashboard:
                                 </div>
                                 <div class="card">
                                     <div class="metric-label">Avg Recall</div>
-                                    <div class="metric-value">${{{(summary.avg_recall || 0).toFixed(2)}}}</div>
+                                    <div class="metric-value">${{(summary.avg_recall || 0).toFixed(2)}}</div>
                                 </div>
                                 <div class="card">
                                     <div class="metric-label">Recommendations</div>

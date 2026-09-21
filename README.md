@@ -332,7 +332,8 @@ hound.track_metric("vector_search_precision", diagnosis.metrics()["vector_search
 
 See [`examples/`](examples/) for runnable scripts, and
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) / [`docs/GUIDE.md`](docs/GUIDE.md)
-for more detail.
+for more detail. See [`ROADMAP_HONEST.md`](ROADMAP_HONEST.md) for a plain
+list of what's not built, what's untested, and known technical debt.
 
 ---
 

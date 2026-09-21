@@ -1,4 +1,4 @@
-"""Main PyHound class for retrieval diagnostics."""
+"""Main PyVectorHound class for retrieval diagnostics."""
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Optional, List, Dict, Any, Callable
@@ -17,7 +17,7 @@ from pyvectorhound._retry import call_with_backoff
 
 class Hound:
     """
-    Main PyHound class for diagnosing retrieval pipeline issues.
+    Main PyVectorHound class for diagnosing retrieval pipeline issues.
 
     Hunts down which component of your retrieval system is failing
     and provides actionable recommendations.
@@ -53,7 +53,7 @@ class Hound:
         **kwargs: Any
     ):
         """
-        Initialize PyHound.
+        Initialize PyVectorHound.
 
         Args:
             db: Vector database type. Supported: 'qdrant', 'chroma', 'milvus', 'weaviate', 'postgres'

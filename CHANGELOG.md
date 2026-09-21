@@ -2,6 +2,55 @@
 
 All notable changes to PyVectorHound are documented in this file.
 
+## [Unreleased]
+
+### Fixed
+
+- `pyvectorhound/error_messages.py` had a real `SyntaxError` (missing
+  closing paren on `NO_RELEVANT_RESULTS`) that made the module
+  uncompilable; it just wasn't imported anywhere so nothing caught it.
+  Fixed.
+- `pyvectorhound/web_dashboard.py` had a real `SyntaxError` in an
+  f-string (an extra `{` around `(summary.avg_recall || 0).toFixed(2)`)
+  that made the module uncompilable; also unimported/untested elsewhere.
+  Fixed.
+- `pyvectorhound/__init__.py` still declared `__license__ = "Proprietary"`
+  after the 2026-09 relicense to Apache-2.0. Fixed.
+- Dev-dependency ceiling `black>=23.0,<26` in `pyproject.toml` blocked the
+  fix for PYSEC-2026-2121/2120; raised to `<27`.
+- `Cargo.lock` was gitignored, meaning Rust builds of this PyO3 extension
+  were not reproducible. Un-ignored and committed the lockfile.
+
+### Removed
+
+- Deleted `ARCHITECTURE.md` (root), `docs/PRODUCT_VISION.md`,
+  `docs/ROADMAP.md`, `docs/strategy/` (7 files), and
+  `scripts/test_dashboards_crossplatform.sh` — all leftover boilerplate
+  contamination from an unrelated, fictional "MCP 2.0 Platform" of
+  sibling projects (`PyStreamMCP`, `StatGuardian`, `pystreamai`, etc.)
+  that this repo does not depend on or integrate with. They described
+  files, APIs, and a package name (`pyhound`) that don't exist in this
+  codebase.
+
+### Changed
+
+- Rewrote `docs/ARCHITECTURE.md` to describe the actual current codebase
+  (real Rust/Python module list, real Mermaid diagram) instead of a
+  fabricated architecture referencing nonexistent files
+  (`src/debugger.rs`, `src/analyzer.rs`, etc.) and an unrelated package.
+- Rewrote `CONTRIBUTING.md` and `docs/GUIDE.md`: both still referred to
+  this project's pre-rename name (`pyhound`) throughout, including a
+  wrong `git clone` URL and wrong `pip install` command.
+- Rewrote `SECURITY.md`: it described "Version 0.1.0" and referenced a
+  `PRODUCTION_AUDIT_REPORT.md` that doesn't exist in this repo (stale
+  from before the 1.x releases). Now reflects the real current version,
+  a real `pip-audit` run, and honest CI/lint-enforcement gaps.
+- Added `.github/dependabot.yml` cargo ecosystem entry (was missing;
+  pip and github-actions were already covered).
+- Added `.github/pull_request_template.md` (was missing).
+- Added `ROADMAP_HONEST.md` with a full, dated technical debt and gap
+  list.
+
 ## [1.5.0]
 
 ### Added

@@ -4,6 +4,14 @@
 **Version:** v0.1  
 **Date:** 2026-07-20
 
+**Verified 2026-09-20:** the code this document describes
+(`pyvectorhound/okf_diagnostics.py`, 310 lines) is real and has real test
+coverage (`tests/test_okf_diagnostics.py`, 18 test cases covering document
+loading, KB record/reload, pattern extraction, and strategy-success-rate
+tracking — all pass). This is not aspirational documentation for
+unbuilt functionality. The "Future Enhancements" section below is the
+exception — those items are genuinely not built.
+
 ---
 
 ## Overview
@@ -415,8 +423,7 @@ patterns = kb.extract_patterns()
 
 ## Future Enhancements
 
-**Planned (v0.3+):**
-- Cross-project linking with PyStreamMCP query plans
+**Planned (v0.3+), none of this exists yet:**
 - Autonomous recommendation ranking based on KB statistics
 - Visual failure pattern dashboards
 - Export patterns to GitHub issues

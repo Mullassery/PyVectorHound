@@ -133,8 +133,11 @@ dmypy.json
 # Rust
 /target/
 **/*.rs.bk
-Cargo.lock
 *.pdb
+# NOTE: Cargo.lock is intentionally tracked (not ignored) -- this is a
+# PyO3 extension module (an application-like build artifact, not a
+# library meant to be depended on by other Rust crates), so the lockfile
+# should be committed for reproducible builds.
 
 # OS
 .DS_Store

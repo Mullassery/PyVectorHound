@@ -17,6 +17,29 @@ updates:
       prefix: "chore(deps):"
       include: "scope"
 
+  # Rust dependencies (Cargo.toml) -- note: pyo3/numpy are pinned to "0.23"
+  # in Cargo.toml, which under Cargo's default caret semantics for 0.x
+  # crates only allows patch updates (>=0.23.0, <0.24.0). Dependabot can
+  # still open PRs against that ceiling (e.g. the pyo3-0.29/numpy-0.29
+  # branches already on this remote), but merging them requires bumping
+  # the Cargo.toml version bound by hand and validating the PyO3 API
+  # migration -- not something Dependabot does automatically.
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "Mullassery"
+    labels:
+      - "dependencies"
+      - "rust"
+    commit-message:
+      prefix: "chore(deps):"
+      include: "scope"
+
   # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"

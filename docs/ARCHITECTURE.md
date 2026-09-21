@@ -1,185 +1,119 @@
-# PyHound Architecture
+# PyVectorHound Architecture
 
-## Overview
+This document describes the real, current structure of this codebase — not
+an aspirational design. If something below looks unimplemented or
+unverified, it's stated as such rather than glossed over. See
+[ROADMAP_HONEST.md](../ROADMAP_HONEST.md) for the full status/gap list.
 
-PyHound is a diagnostic tool for RAG/LLM retrieval systems, built with:
-- **Rust core** — High-performance diagnostics
-- **Python wrapper** — Easy integration with Python ML workflows
+## What this is
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│ User Application (Python)                                   │
-│ from pyhound import Hound                                   │
-└─────────────────────┬───────────────────────────────────────┘
-                      │
-┌─────────────────────▼───────────────────────────────────────┐
-│ PyHound Python API (pyhound/)                               │
-│ ├─ Hound (main interface)                                  │
-│ ├─ Diagnosis (analysis results)                            │
-│ ├─ ModelComparison (model selection)                       │
-│ └─ QualityScorer (embedding monitoring)                    │
-└─────────────────────┬───────────────────────────────────────┘
-                      │ (PyO3 bindings)
-┌─────────────────────▼───────────────────────────────────────┐
-│ PyHound Rust Core (src/lib.rs)                              │
-│ ├─ Isotropy calculation                                    │
-│ ├─ Coverage analysis                                       │
-│ ├─ Distinctiveness metrics                                 │
-│ ├─ Drift detection                                         │
-│ ├─ Component analysis                                      │
-│ └─ Improvement tracking                                    │
-└─────────────────────┬───────────────────────────────────────┘
-                      │
-┌─────────────────────▼───────────────────────────────────────┐
-│ Database Adapters (All Open-Source)                         │
-│ ├─ Qdrant adapter                                          │
-│ ├─ Chroma adapter                                          │
-│ ├─ Milvus adapter                                          │
-│ ├─ Weaviate adapter                                        │
-│ └─ PostgreSQL pgvector adapter                             │
-└─────────────────────┬───────────────────────────────────────┘
-                      │
-┌─────────────────────▼───────────────────────────────────────┐
-│ Vector Databases (Open-Source)                              │
-│ ├─ Qdrant                                                  │
-│ ├─ Chroma                                                  │
-│ ├─ Milvus                                                  │
-│ ├─ Weaviate                                                │
-│ └─ PostgreSQL + pgvector                                   │
-└─────────────────────────────────────────────────────────────┘
+PyVectorHound is a diagnostic layer for RAG/vector-search pipelines: given
+retrieval results (from your own code, or fetched live from a vector DB
+adapter), it computes real metrics — embedding isotropy/coverage/
+distinctiveness, precision/recall/MRR against ground truth, and optional
+LLM-as-judge faithfulness — and turns them into a root-cause explanation
+and ranked recommendations. It does not run an embedding model, reranker,
+or BM25 index itself.
+
+## High-level flow
+
+```mermaid
+flowchart TD
+    U[User code] -->|"Hound(db=..., embed_fn=..., llm_judge_fn=...)"| H[Hound<br/>pyvectorhound/hound.py]
+    H --> A[Database adapter<br/>pyvectorhound/database.py, db_adapters.py]
+    A -->|get_embeddings / search| DB[(Qdrant / Chroma / Milvus /<br/>Weaviate / pgvector)]
+    H --> D[Diagnosis<br/>pyvectorhound/diagnosis.py]
+    D --> R[Rust core _core<br/>src/lib.rs via PyO3]
+    D --> REC[RecommendationEngine<br/>pyvectorhound/recommendations.py]
+    D -->|hunt / metrics / root_cause| OUT[Plain-English report]
+    H --> CMP[ModelComparison<br/>pyvectorhound/comparison.py]
+    H --> QS[QualityScorer<br/>pyvectorhound/scorer.py]
+    QS --> TA[TrendAnalyzer<br/>pyvectorhound/trend_analysis.py]
 ```
 
-## Core Concepts
+## Rust core (`src/`, ~1,100 lines, PyO3 extension module `pyvectorhound._core`)
 
-### Components
+| File | Real content |
+|---|---|
+| `src/lib.rs` (196 lines) | `#[pymodule] fn _core(...)` — the actual PyO3 entry point. Wraps the functions below as `#[pyfunction]`s: `py_compute_isotropy`, `py_compute_coverage`, `py_compute_distinctiveness`, `py_detect_drift`, `py_compute_retrieval_metrics`, `py_compute_quality_score`, `py_quantize_vector`/`py_dequantize_vector`/`py_quantize_batch`/`py_dequantize_batch`. |
+| `src/metrics.rs` (329 lines) | Embedding-space diagnostics: isotropy, coverage, distinctiveness, drift detection, retrieval metrics (precision/recall/MRR), quality score. Has its own `#[cfg(test)]` unit tests. |
+| `src/quantization.rs` (300 lines) | Real int8 scalar quantization: per-vector min/max linear mapping to `i8` plus a `(scale, offset)` pair for dequantization. Measured max reconstruction error ~0.0039 on a 384-dim test vector vs. the theoretical 8-bit bound (~0.0078). This is **scalar** quantization, not product quantization, and is **not** SIMD/GPU accelerated — both are out of scope, not oversights. |
+| `src/retrieval_ranking.rs` (280 lines) | `RetrievalRanker`: combines BM25, semantic, recency, and diversity signals into one ranking, plus cross-encoder-style reranking. Compiled into `_core` but **not yet exposed as a callable from Python** — `lib.rs` doesn't wrap it in a `#[pyfunction]`/register it in the `#[pymodule]` block. Treat it as internal, in-progress infrastructure, not a public API. |
 
-PyHound analyzes retrieval at four stages:
+Validated 2026-09-20: `cargo build --release --all-features`,
+`cargo test --release --all-features` (17/17 pass), `cargo fmt --check`
+(clean), and `cargo clippy --release --all-features` (no warnings) all
+pass on this checkout.
 
-1. **Embedding Quality** — How well embeddings capture semantics
-   - Isotropy: Vector space utilization
-   - Coverage: Diversity of embeddings
-   - Distinctiveness: Semantic separation
+## Python layer (`pyvectorhound/`, ~9,800 lines across ~30 modules)
 
-2. **Vector Search** — Similarity matching quality
-   - Precision: Correctness of results
-   - Recall: Completeness of results
-   - Ranking quality: Relevance ordering
+Core diagnostic path (imported by `pyvectorhound/__init__.py`, has test
+coverage):
 
-3. **Keyword Search (BM25)** — Full-text matching
-   - Precision and recall
-   - Match quality
+- `hound.py` — `Hound`, the main entry point. Owns the adapter, `embed_fn`,
+  `llm_judge_fn`, and orchestrates `diagnose()` / `diagnose_batch()` /
+  `compare_models()` / `compare_metrics()` / `detect_drift()`.
+- `diagnosis.py` — `Diagnosis`: computes per-component metrics, faithfulness
+  (if `llm_judge_fn` + `document_texts` given), root cause, and
+  recommendations. Reports `"UNKNOWN"` for BM25/reranker (not implemented)
+  instead of fabricating a score.
+- `database.py` / `db_adapters.py` — `VectorDB` adapter protocol and real
+  adapters for Qdrant, Chroma, Milvus, Weaviate, and pgvector.
+- `comparison.py` — `ModelComparison`: `pareto_frontier()`, `ab_test()`.
+- `scorer.py` — `QualityScorer`: `corpus_health()`, `detect_anomalies()`,
+  dynamic GOOD/MODERATE/WEAK thresholds calibrated against
+  `trend_analysis.py`'s `TrendAnalyzer` when one has been tracked.
+- `trend_analysis.py` — `TrendAnalyzer`, `TimeSeries`, drift/regression/
+  anomaly detection over tracked metric history.
+- `recommendations.py` — `RecommendationEngine`, ranked fix suggestions.
+- `retrieval_tracing.py` / `retrieval_replay.py` — capture and replay a
+  retrieval pipeline's execution for debugging.
+- `benchmarking.py` / `advanced_analytics.py` — latency/cost/storage
+  benchmarking and cross-database comparison.
+- `langchain_integration.py` / `llamaindex_integration.py` — callback/
+  retriever wrappers for those frameworks.
+- `okf_diagnostics.py` — a real, tested (`tests/test_okf_diagnostics.py`,
+  18+ test cases) frontmatter-based persistent knowledge base for
+  diagnostic findings: pattern extraction, similar-failure lookup,
+  strategy-success-rate tracking. See `OKF_INTEGRATION.md`.
+- `_retry.py` — exponential backoff + jitter for `embed_fn`/`llm_judge_fn`
+  calls used by `diagnose_batch()`.
 
-4. **Reranker** — Final result ordering
-   - Calibration: Are scores correct?
-   - NDCG: Ranking quality
+Present in the package but **not wired into the main import path, not
+tested, and with dependencies that aren't declared in `pyproject.toml`**
+(see ROADMAP_HONEST.md for the full list):
 
-### Diagnosis Flow
+- `server.py` — a `Flask`-based REST API wrapper (`Flask` is not a declared
+  dependency anywhere in `pyproject.toml`). Zero tests, zero references
+  from `examples/` or `README.md`.
+- `web_dashboard.py` — an HTML dashboard whose docstring/footer says
+  "Powered by FastAPI" (`FastAPI` is likewise not a declared dependency).
+  Zero tests, zero references elsewhere in the repo.
+- `cli.py` — has a real `main()`/argparse CLI, but there is no
+  `[project.scripts]` entry in `pyproject.toml`, so `pip install
+  pyvectorhound` does not give you a `pyvectorhound` command. It's only
+  reachable via `python -m pyvectorhound.cli`, which isn't documented
+  anywhere in README/USER_GUIDE.
+- `_mcp_connector.py` / `_mcp_tools.py` / `server.py`'s MCP hooks — support
+  an optional integration with a separate `statguardian` package via
+  `try: from statguardian._mcp_connector import BaseMCPConnector except
+  ImportError: <local fallback class>`. `statguardian` is not a dependency
+  of this project and this path is untested here.
 
-```
-User Query
-    │
-    ├─→ Retrieve results (vector DB)
-    │
-    ├─→ Compute metrics for each component:
-    │   ├─ Embedding quality (Rust core)
-    │   ├─ Vector search metrics
-    │   ├─ BM25 metrics
-    │   └─ Reranker metrics
-    │
-    ├─→ Identify root cause
-    │
-    ├─→ Generate recommendations
-    │
-    └─→ Return Diagnosis object
-```
+## Testing
 
-## Key Modules
+`tests/` (10 files, 174 tests as of 2026-09-20, all passing) covers the
+core diagnostic path: `hound.py`, `diagnosis.py`, `scorer.py`,
+`benchmarking.py`, `trend_analysis.py`, `recommendations.py`,
+`okf_diagnostics.py`, database adapters (via mocks), and the LangChain/
+LlamaIndex/OTel/advanced-analytics integrations
+(`test_v05_integrations.py`). There are no tests for `server.py`,
+`web_dashboard.py`, `validation.py`, or `cli.py`.
 
-### `pyhound/hound.py`
-Main interface. Coordinates diagnosis, comparison, and monitoring.
-
-### `pyhound/diagnosis.py`
-Analyzes retrieval failures and generates reports.
-
-### `pyhound/comparison.py`
-Compares models (embedding, reranker) for selection.
-
-### `pyhound/scorer.py`
-Monitors embedding quality in production.
-
-### `src/lib.rs`
-Rust core implementing:
-- Embedding metrics (isotropy, coverage, distinctiveness)
-- Drift detection
-- Performance-critical calculations
-
-## Data Flow
-
-### Diagnosis Request
-
-```python
-hound = Hound(db="qdrant")
-diagnosis = hound.diagnose(query="...", top_k=5)
-```
-
-1. Query is sent to vector database
-2. Top-K results retrieved
-3. Rust core computes metrics
-4. Python layer analyzes results
-5. Diagnosis object generated with recommendations
-
-### Model Comparison
-
-```python
-comparison = hound.compare_models(
-    model_type="embedding",
-    candidates=["3-small", "3-large"]
-)
-```
-
-1. Sample queries selected
-2. Each model tested on samples
-3. Metrics computed (quality, cost, latency)
-4. Recommendations generated
-
-## Performance Considerations
-
-- **Rust core** — Sub-millisecond metric calculations
-- **Database queries** — Depends on database (typically 1-100ms)
-- **Python overhead** — Minimal via PyO3
-- **Caching** — Results cached when possible
-
-Target: <100ms end-to-end diagnosis per query
-
-## Extensibility
-
-### Adding Database Adapters
-
-Implement the `VectorDB` protocol:
-
-```python
-class CustomDBAdapter(VectorDB):
-    def connect(self, endpoint: str) -> None: ...
-    def search(self, query: np.ndarray, top_k: int) -> List[Result]: ...
-    def get_embeddings(self, doc_ids: List[str]) -> List[np.ndarray]: ...
-```
-
-### Adding Metrics
-
-Rust functions are exposed via PyO3:
-
-```rust
-#[pyfunction]
-fn compute_custom_metric(embeddings: Vec<Vec<f32>>) -> PyResult<f32> {
-    // Implementation
-}
-```
-
-## Testing Strategy
-
-- **Unit tests** — Rust metrics calculation
-- **Integration tests** — Full diagnosis workflow
-- **Database tests** — Each adapter
-- **Benchmark tests** — Performance regressions
-
-See `tests/` for examples.
+`pytest --cov=pyvectorhound` only reports real numbers with an editable
+install (`pip install -e ".[dev]"`, what CI uses — 56% overall as of this
+audit); a plain non-editable install makes every module read 0% because
+`coverage.py` can't map the installed `site-packages` copy back to this
+source tree. With the correct (editable) install, `server.py`,
+`web_dashboard.py`, and `validation.py` genuinely show 0% — they're
+real gaps, not a measurement artifact. See ROADMAP_HONEST.md.

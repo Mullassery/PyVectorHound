@@ -80,6 +80,7 @@ NO_RELEVANT_RESULTS = DiagnosticError(
         "Check if query is too different from documents",
         "Try rephrasing query in different words",
     ]
+)
 
 RERANKER_FAILURE = DiagnosticError(
     title="Reranker Failed",

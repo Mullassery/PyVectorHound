@@ -1,5 +1,5 @@
 // Embedding quality metrics calculation
-// These are the core diagnostics that power PyHound
+// These are the core diagnostics that power PyVectorHound
 
 use std::f32;
 

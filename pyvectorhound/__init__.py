@@ -21,7 +21,7 @@ Attributes:
     __version__ (str): Package version
     __author__ (str): Primary author
     __email__ (str): Author email
-    __license__ (str): License type (Proprietary)
+    __license__ (str): License type (Apache-2.0)
 """
 
 import logging
@@ -40,7 +40,7 @@ except PackageNotFoundError:
     __version__: Final[str] = "0.0.0+unknown"
 __author__: Final[str] = "Georgi Mammen Mullassery"
 __email__: Final[str] = "mullassery@gmail.com"
-__license__: Final[str] = "Proprietary"
+__license__: Final[str] = "Apache-2.0"
 
 try:
     from pyvectorhound.hound import Hound

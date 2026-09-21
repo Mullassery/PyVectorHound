@@ -1,19 +1,19 @@
-# PyHound User Guide
+# PyVectorHound User Guide
 
 ## Getting Started
 
 ### Installation
 
 ```bash
-pip install pyhound-core
+pip install pyvectorhound
 ```
 
 ### Basic Workflow
 
 ```python
-from pyhound import Hound
+from pyvectorhound import Hound
 
-# 1. Initialize PyHound with your database
+# 1. Initialize PyVectorHound with your database
 hound = Hound(db="qdrant", endpoint="localhost:6333")
 
 # 2. Diagnose a retrieval issue
@@ -213,7 +213,7 @@ hound = Hound(
 psql -U postgres -d your_db -c "CREATE EXTENSION IF NOT EXISTS vector"
 
 # Install Python dependencies
-pip install pyhound-core[postgres]
+pip install pyvectorhound[postgres]
 ```
 
 **Example Table Structure:**
@@ -326,7 +326,7 @@ Make sure the index name matches your database:
 
 ### Issue: "Slow diagnostics"
 
-PyHound is optimized for <100ms per query. If slower:
+PyVectorHound is optimized for <100ms per query. If slower:
 
 1. Check database latency (run `search` separately)
 2. Reduce `top_k` for faster testing
@@ -395,12 +395,14 @@ diagnosis = hound.diagnose(
     expected_docs=["doc_1", "doc_3", "doc_5"],  # docs that should be retrieved
     top_k=10
 )
-# PyHound will calculate precision/recall against ground truth
+# PyVectorHound will calculate precision/recall against ground truth
 ```
 
 ## Next Steps
 
 - Read [ARCHITECTURE.md](ARCHITECTURE.md) for technical details
 - Check [examples/](../examples/) for integration examples
-- Browse [API reference](API.md) for full documentation
-- Open an issue on [GitHub](https://github.com/Mullassery/pyhound) for questions
+- Read the docstrings in `pyvectorhound/hound.py`, `diagnosis.py`,
+  `comparison.py`, and `scorer.py` for full API details — there is no
+  separate generated API reference yet
+- Open an issue on [GitHub](https://github.com/Mullassery/PyVectorHound) for questions
