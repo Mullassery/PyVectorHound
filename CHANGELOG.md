@@ -20,6 +20,20 @@ All notable changes to PyVectorHound are documented in this file.
   fix for PYSEC-2026-2121/2120; raised to `<27`.
 - `Cargo.lock` was gitignored, meaning Rust builds of this PyO3 extension
   were not reproducible. Un-ignored and committed the lockfile.
+- `cli.py` had a real, working `main()` (326 lines) but no
+  `[project.scripts]` entry in `pyproject.toml`, so it wasn't installable
+  as a command. Added `pyvectorhound = "pyvectorhound.cli:main"`; verified
+  end-to-end with a clean `pip install .` into a fresh venv (`pyvectorhound
+  help` and `pyvectorhound list` both run correctly as an installed
+  console script).
+- `pyproject.toml`'s `[tool.ruff]` section used the deprecated top-level
+  `select` key, which current `ruff` versions warn about on every
+  invocation. Moved to `[tool.ruff.lint] select`; `ruff check .` no longer
+  emits the deprecation warning (still reports the same pre-existing 185
+  findings, which are out of scope for this pass).
+- `CHANGELOG.md` had a second, orphaned `## [Unreleased]` section below
+  `[0.1.0]` linking to `ROADMAP.md`, a file deleted in an earlier pass.
+  Removed the dead section and link.
 
 ### Removed
 
@@ -228,14 +242,3 @@ on top of `1.3.2` unchanged.
 ### Known Issues
 - Streaming RAG pipelines not yet supported
 - LLamaIndex integration in progress
-
-## [Unreleased]
-
-### Planned
-- Streaming RAG support
-- LLamaIndex integration
-- Custom metric definitions
-- Dashboard UI
-- API server mode
-
-For details, see [ROADMAP.md](../ROADMAP.md).

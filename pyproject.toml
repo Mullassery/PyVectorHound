@@ -80,6 +80,9 @@ all = [
     "pyvectorhound[qdrant,chroma,milvus,weaviate,postgres,pgvector,dev]",
 ]
 
+[project.scripts]
+pyvectorhound = "pyvectorhound.cli:main"
+
 [project.urls]
 Homepage = "https://github.com/Mullassery/Pyvectorhound"
 Repository = "https://github.com/Mullassery/Pyvectorhound"
@@ -112,4 +115,6 @@ target-version = ["py38"]
 [tool.ruff]
 line-length = 100
 target-version = "py38"
+
+[tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "RUF"]

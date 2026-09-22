@@ -126,19 +126,24 @@ those are stated as missing.
      categories). 108 are auto-fixable with `ruff check . --fix`.
    - `black --check pyvectorhound/ tests/` → **39 of 41 files** would be
      reformatted.
-   - `pyproject.toml`'s `[tool.ruff]` section uses the deprecated
-     top-level `select` key instead of `[tool.ruff.lint] select`; current
-     `ruff` versions emit a deprecation warning on every invocation.
+   - ~~`pyproject.toml`'s `[tool.ruff]` section uses the deprecated
+     top-level `select` key instead of `[tool.ruff.lint] select`~~
+     **Fixed 2026-09-22** — moved to `[tool.ruff.lint] select`; `ruff
+     check .` no longer emits the deprecation warning (still reports the
+     same 185 pre-existing findings, untouched — see below).
    None of this is enforced, so it will keep drifting. A dedicated pass
    should either wire these into CI or drop the dead config.
 
-4. **`cli.py` has a real, working `main()`/argparse CLI (326 lines) but
-   is not installable as a command.** There is no `[project.scripts]`
-   entry in `pyproject.toml`. The only way to invoke it is `python -m
-   pyvectorhound.cli`, which is undocumented anywhere in
-   `README.md`/`USER_GUIDE.md`. Needs a `[project.scripts]` entry plus
-   verification the CLI still works end-to-end, and a version bump since
-   it changes the installed package's public surface.
+4. ~~**`cli.py` has a real, working `main()`/argparse CLI (326 lines) but
+   is not installable as a command.**~~ **Fixed 2026-09-22.** Added
+   `[project.scripts]` entry (`pyvectorhound = "pyvectorhound.cli:main"`)
+   to `pyproject.toml`. `main()` reads `sys.argv` directly with no
+   required arguments, so this was a trivial, safe addition — verified
+   end-to-end with a clean `pip install .` into a fresh venv (`pyvectorhound
+   help` / `pyvectorhound list` both run as an installed console script,
+   same output as `python -m pyvectorhound.cli`). No version bump done as
+   part of this quick-fix pass; still recommended before the next release
+   since it changes the installed package's public surface.
 
 5. **Two open Dependabot dependency-ceiling gaps, one already
    fixed here, one still open:**
@@ -152,15 +157,21 @@ those are stated as missing.
    - `pytest-cov` ceiling (`<7`) may also be blocking a fix; a Dependabot
      branch exists (`dependabot/pip/pytest-cov-7.1.0`) — unmerged.
 
-6. **8 open Dependabot branches sitting unmerged on the remote** (as of
-   this audit): `dependabot/cargo/numpy-0.29`,
+6. **10 open Dependabot PRs sitting unmerged on the remote** (as of
+   2026-09-22, re-checked via `gh pr list`; up from 8 at last audit —
+   2 new ones landed since: `dependabot/cargo/serde_json-1.0.151` and
+   `dependabot/pip/mypy-gte-1.0-and-lt-3`): `dependabot/cargo/numpy-0.29`,
    `dependabot/cargo/pyo3-0.29`,
    `dependabot/github_actions/actions/checkout-7`,
    `dependabot/github_actions/actions/setup-python-7`,
-   `dependabot/pip/chromadb-1.5.9`, `dependabot/pip/mypy-2.3.0`,
+   `dependabot/pip/chromadb-1.5.9`,
+   `dependabot/pip/mypy-gte-1.0-and-lt-3`,
+   `dependabot/cargo/serde_json-1.0.151`,
    `dependabot/pip/pytest-cov-7.1.0`,
    `dependabot/pip/pytest-gte-7.0-and-lt-10`,
-   `dependabot/pip/weaviate-client-gte-3.24-and-lt-5`. Two of these
+   `dependabot/pip/weaviate-client-gte-3.24-and-lt-5`. None were merged or
+   duplicated manually in this quick-fix pass — all are routine version
+   bumps Dependabot already has correctly proposed. Two of these
    (`checkout-7`, `setup-python-7`) would fix the CI workflow using
    outdated `actions/checkout@v4`/`actions/setup-python@v4`. The
    `pyo3-0.29`/`numpy-0.29` bumps are non-trivial: `Cargo.toml` pins
@@ -217,6 +228,11 @@ those are stated as missing.
 - Rewrote `docs/ARCHITECTURE.md`, `CONTRIBUTING.md`, `docs/GUIDE.md`,
   `SECURITY.md` to remove stale pre-rename (`pyhound`) branding and
   inaccurate claims.
+- (2026-09-22 quick-fix pass) `[project.scripts]` CLI entry point added
+  and verified; `[tool.ruff]` deprecated `select` key moved to
+  `[tool.ruff.lint]`; orphaned second `[Unreleased]` section in
+  `CHANGELOG.md` (dead link to deleted `ROADMAP.md`) removed. See
+  CHANGELOG.md `[Unreleased]` for details.
 
 ## Things deliberately left alone in this pass
 
