@@ -150,7 +150,7 @@ class Diagnosis:
 
         doc_ids = [str(r["id"]) for r in self.results]
         embeddings_by_id = self.adapter.get_embeddings(doc_ids)
-        vectors = [v.tolist() for v in embeddings_by_id.values()]
+        vectors = [v.tolist() if hasattr(v, "tolist") else list(v) for v in embeddings_by_id.values()]
 
         if len(vectors) < 2:
             return {

@@ -18,6 +18,11 @@ All notable changes to PyVectorHound are documented in this file.
   after the 2026-09 relicense to Apache-2.0. Fixed.
 - Dev-dependency ceiling `black>=23.0,<26` in `pyproject.toml` blocked the
   fix for PYSEC-2026-2121/2120; raised to `<27`.
+- `Diagnosis.check_embedding_health()` (`diagnosis.py:153`) called
+  `.tolist()` on every value from `adapter.get_embeddings()`, assuming a
+  numpy array; an adapter returning plain Python lists (no `.tolist`
+  method) crashed with `AttributeError` instead of running the health
+  check. Now falls back to `list(v)` when `.tolist` isn't present.
 - `Cargo.lock` was gitignored, meaning Rust builds of this PyO3 extension
   were not reproducible. Un-ignored and committed the lockfile.
 - `cli.py` had a real, working `main()` (326 lines) but no
