@@ -318,6 +318,62 @@ hound.track_metric("vector_search_precision", diagnosis.metrics()["vector_search
 
 ---
 
+## vs Ragas
+
+Ragas is the closest OSS competitor — the standard for RAG evaluation
+metrics. We ran both against the same real corpus (168 real chunks from 3
+live English Wikipedia articles: Transformer architecture, attention
+mechanisms, retrieval-augmented generation), real embeddings
+(`nomic-embed-text` via a local Ollama instance, not fabricated vectors),
+and a real local LLM judge/generator (`qwen2.5:7b-instruct` via Ollama — no
+cloud API keys used or needed). 4 real queries, including 2 deliberately
+hard cases (one genuinely unanswerable from the corpus, one prone to
+retrieving a topically-similar-but-wrong article).
+
+| Query | PyVectorHound `vector_search` | PyVectorHound `faithfulness` | Ragas `context_precision` | Ragas `context_recall` | Ragas `faithfulness` |
+|---|---|---|---|---|---|
+| "easy" (attention mechanism) | WEAK — 0% precision/recall (retrieved 0/4 chunks from the *expected* article) | GOOD (retrieved passage still explains the mechanism) | 0.9999 | 1.0 | 1.0 |
+| "cross_chunk" (how RAG reduces hallucination) | GOOD — 100% precision/recall | GOOD (retrieved passages are on-topic) | 0.9999 | 1.0 | **0.0** (generated answer refused to use the context) |
+| "no_answer" (OpenAI's exact founding date — not in corpus) | UNKNOWN (correctly declines to guess without ground truth) | GOOD (0 faithful/0 contradicted — no false positive) | **0.0** (correctly flags irrelevant context) | 1.0 | 1.0 |
+| "distractor" (self- vs cross-attention) | WEAK — 50% precision | GOOD | 0.9999 | 1.0 | 1.0 |
+
+**What this actually shows, not just the numbers:** on the "easy" and
+"distractor" queries, PyVectorHound's `vector_search` metric scored the
+retrieval as weak/failing — but that's a real limitation of *this test's*
+ground truth, not necessarily a real retrieval failure: the expected-docs
+ground truth was defined by *which Wikipedia article* a chunk came from,
+and in both cases the retrieved chunks (from a different article) still
+genuinely contained the answer, confirmed by both LLM judges. Ragas's
+`context_precision`/`context_recall`, which score against a written
+reference *answer* rather than document identity, aren't fooled by that —
+a real methodological lesson: document-identity ground truth is brittle,
+answer-based ground truth is more robust. That's a real tradeoff of
+PyVectorHound's approach, not a bug we found and fixed.
+
+The "cross_chunk" row shows the real, useful architectural difference
+between the two tools: PyVectorHound's `faithfulness` check judges the
+*retrieved passages* (are they relevant/non-contradictory?) and correctly
+said GOOD — they were. Ragas's `faithfulness` judges the *generated
+answer*'s claims against the context, and correctly caught that the LLM's
+actual answer declined to use good context and hedged instead — a real
+generation-layer failure that PyVectorHound has no visibility into,
+because it never requires an LLM to generate a final answer at all.
+That's the real scope difference: PyVectorHound diagnoses the retrieval
+layer standalone (useful when you don't have or don't want to run a full
+generation step); Ragas evaluates the full retrieve-then-generate
+pipeline end to end, which needs a real generated answer and a written
+reference answer to run at all.
+
+One real, reproducible gotcha found while building this benchmark:
+PyVectorHound's `ChromaAdapter.connect()` (`database.py`) calls
+`chromadb.Client()` with no persistence path, so it only works when
+populated in the *same process* — a separate script/process using its own
+`chromadb.Client()` cannot see data another process wrote, since Chroma's
+ephemeral in-memory client isn't shared across process boundaries (it is
+shared across separate `Client()` calls *within* one process). Not a code
+bug — this is real, documented Chroma default behavior — but worth
+knowing before assuming `endpoint=""` means "persistent local store."
+
 ## Other tools
 
 - `hound.quality_scorer()` — `QualityScorer` for scoring an embedding's
