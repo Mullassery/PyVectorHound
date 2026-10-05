@@ -74,3 +74,25 @@ def test_compute_reranker_metrics_against_ground_truth():
 def test_mismatched_lengths_raises():
     with pytest.raises(Exception):
         compute_reranker_metrics(["doc_1", "doc_2"], [1.0], ["doc_1"], k=2)
+
+
+def test_output_order_reflects_diversity_adjusted_score_not_selection_order():
+    # doc_b is a near-duplicate of doc_a (selected first) and gets
+    # penalized below doc_c's unpenalized score. The returned list must be
+    # ordered by the post-penalty score, not by pre-diversity rank -- a
+    # bug this test would have caught: the old implementation returned
+    # [doc_a, doc_b, doc_c] (selection order) instead of the correct
+    # [doc_a, doc_c, doc_b].
+    results = [
+        ("doc_a", {"semantic": 1.0}, [1.0, 0.0]),
+        ("doc_b", {"semantic": 0.525}, [1.0, 0.0]),  # near-dup of doc_a
+        ("doc_c", {"semantic": 0.45}, [0.0, 1.0]),  # orthogonal, unpenalized
+    ]
+
+    ranked = rank_and_diversify(results, top_k=3)
+    ids = [r["document_id"] for r in ranked]
+
+    assert ids == ["doc_a", "doc_c", "doc_b"]
+    assert [r["rank"] for r in ranked] == [1, 2, 3]
+    scores = [r["relevance_score"] for r in ranked]
+    assert scores == sorted(scores, reverse=True)

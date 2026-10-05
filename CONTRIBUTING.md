@@ -38,13 +38,18 @@ RUSTFLAGS="-C link-args=-undefined -C link-args=dynamic_lookup" pip install -e "
 ### Building from Source
 
 ```bash
-# Build the Rust extension in place (for `cargo test`/`cargo clippy`)
-cargo build --release --all-features
-
-# Run Rust tests
+# Run Rust tests and lints (works on macOS and Linux)
 cargo test --release --all-features
+cargo clippy --all-targets
 
-# Run Python tests (after `pip install ".[dev]"` above)
+# Rebuild the Python-visible extension after ANY change under src/ —
+# `cargo build`/`cargo test` alone do NOT update the compiled extension
+# that `import pyvectorhound` picks up. Forgetting this step means Python
+# silently runs against a stale `_core` build with no error for any
+# function that existed in both versions. Requires `pip install maturin`.
+maturin develop --release
+
+# Run Python tests (after `pip install ".[dev]"` and/or `maturin develop` above)
 pytest tests/
 
 # Run linting (not currently enforced in CI — see ROADMAP_HONEST.md)
@@ -52,6 +57,17 @@ black pyvectorhound/ tests/
 ruff check pyvectorhound/ tests/
 mypy pyvectorhound/
 ```
+
+> **macOS note:** `cargo build --release --all-features` (as a standalone
+> command, outside `maturin`) fails to link on macOS with "symbol(s) not
+> found for architecture arm64" (`_Py_IsInitialized`, `__Py_Dealloc`,
+> etc.) — this is a standard PyO3 `extension-module` + macOS linker
+> interaction (macOS requires `-undefined dynamic_lookup`, which `cargo
+> build` doesn't set up on its own; `maturin` does). It is **not** a bug
+> and does not affect CI, which runs on `ubuntu-latest` where the
+> default linker allows unresolved symbols in shared objects. Use `cargo
+> test`/`cargo clippy` (both link correctly) or `maturin build`/`develop`
+> for anything that needs the actual compiled extension.
 
 ## Code Style
 

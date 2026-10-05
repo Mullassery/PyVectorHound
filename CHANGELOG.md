@@ -2,7 +2,7 @@
 
 All notable changes to PyVectorHound are documented in this file.
 
-## [Unreleased]
+## [1.6.0]
 
 ### Added
 
@@ -51,6 +51,21 @@ All notable changes to PyVectorHound are documented in this file.
 - `CHANGELOG.md` had a second, orphaned `## [Unreleased]` section below
   `[0.1.0]` linking to `ROADMAP.md`, a file deleted in an earlier pass.
   Removed the dead section and link.
+- **(2026-10-05 audit) Stale, untracked `_core.cpython-*.so` build
+  artifacts in `pyvectorhound/` silently shadowed the correctly-installed
+  package for any Python process run from the repo root, predating the
+  `RetrievalRanker` bindings added above — meaning
+  `rank_and_diversify()`/`compute_reranker_metrics()` raised
+  `AttributeError` under that shadowing with no warning. Deleted the stale
+  artifacts; see `TECHNICAL_DEBT.md` TD-0001 and the new CONTRIBUTING.md
+  note on always running `maturin develop` after Rust changes.
+- **(2026-10-05 audit) `RetrievalRanker::diversify()` didn't re-sort its
+  output by the diversity-adjusted score**, returning results in
+  pre-diversity selection order instead — contradicting its own documented
+  contract and able to place a penalized near-duplicate ahead of a
+  higher-scoring, unpenalized result. Fixed in `src/retrieval_ranking.rs`;
+  see `TECHNICAL_DEBT.md` TD-0002 for a worked repro and the new
+  order-asserting regression tests (Rust + Python) added alongside the fix.
 
 ### Removed
 

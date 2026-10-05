@@ -90,7 +90,15 @@ impl RetrievalRanker {
             + (recency * self.recency_weight)
     }
 
-    /// Diversify results to reduce redundancy
+    /// Diversify results to reduce redundancy.
+    ///
+    /// Selection greedily walks `ranked` in original relevance order (each
+    /// result's penalty depends only on results already selected), but the
+    /// returned list is re-sorted by the final diversity-adjusted score and
+    /// re-ranked 1..N -- selection order and output order are not the same
+    /// thing. A near-duplicate selected early can end up with a lower
+    /// adjusted score than a later, undiscounted result; callers (and the
+    /// `rank` field) must see the adjusted order, not the selection order.
     pub fn diversify(&self, ranked: Vec<RankedResult>, top_k: usize) -> Vec<RankedResult> {
         let mut diversified = Vec::new();
 
@@ -109,6 +117,11 @@ impl RetrievalRanker {
             adjusted_result.diversity_score = 1.0 - similarity_penalty;
 
             diversified.push(adjusted_result);
+        }
+
+        diversified.sort_by(|a, b| b.relevance_score.partial_cmp(&a.relevance_score).unwrap());
+        for (i, result) in diversified.iter_mut().enumerate() {
+            result.rank = i + 1;
         }
 
         diversified
@@ -335,6 +348,68 @@ mod tests {
             distinct.relevance_score, 0.5,
             "orthogonal embedding gets no penalty"
         );
+    }
+
+    #[test]
+    fn test_diversification_output_is_sorted_by_adjusted_score_not_selection_order() {
+        // doc_b's penalty (near-dup of doc_a, selected first) drops its
+        // adjusted score (0.525 * 0.85 = 0.44625) below doc_c's unpenalized
+        // score (0.45) -- a real inversion the old implementation missed,
+        // since it returned results in greedy-selection order rather than
+        // re-sorting by the post-penalty score.
+        let ranker = RetrievalRanker::new();
+        let results = vec![
+            RankedResult {
+                document_id: "doc_a".to_string(),
+                relevance_score: 1.0,
+                rank: 1,
+                ranking_factors: HashMap::new(),
+                diversity_score: 1.0,
+                embedding: vec![1.0, 0.0],
+            },
+            RankedResult {
+                document_id: "doc_b".to_string(),
+                relevance_score: 0.525,
+                rank: 2,
+                ranking_factors: HashMap::new(),
+                diversity_score: 1.0,
+                embedding: vec![1.0, 0.0], // identical to doc_a -> gets penalized
+            },
+            RankedResult {
+                document_id: "doc_c".to_string(),
+                relevance_score: 0.45,
+                rank: 3,
+                ranking_factors: HashMap::new(),
+                diversity_score: 1.0,
+                embedding: vec![0.0, 1.0], // orthogonal -> no penalty
+            },
+        ];
+
+        let diversified = ranker.diversify(results, 3);
+
+        let ids: Vec<&str> = diversified.iter().map(|r| r.document_id.as_str()).collect();
+        assert_eq!(
+            ids,
+            vec!["doc_a", "doc_c", "doc_b"],
+            "output must be ordered by adjusted score (doc_b's penalty drops it below doc_c), \
+             not by pre-diversity selection order"
+        );
+
+        let ranks: Vec<usize> = diversified.iter().map(|r| r.rank).collect();
+        assert_eq!(
+            ranks,
+            vec![1, 2, 3],
+            "rank field must reflect the post-diversity output order"
+        );
+
+        for (i, result) in diversified.iter().enumerate() {
+            if i > 0 {
+                assert!(
+                    result.relevance_score <= diversified[i - 1].relevance_score,
+                    "relevance_score must be non-increasing in output order"
+                );
+            }
+        }
     }
 
     #[test]
