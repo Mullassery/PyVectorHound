@@ -1,14 +1,29 @@
 //! PyVectorHound v1.3: Advanced Retrieval Ranking & Reranking
 //!
 //! Multi-criteria ranking, cross-encoder reranking, and diversity optimization.
-//!
-//! Not yet exposed to Python via the `_core` extension module -- this is
-//! compiled infrastructure the Python API doesn't call into yet, hence the
-//! module-wide `dead_code` allowance below.
-#![allow(dead_code)]
+//! Exposed to Python via `py_rank_and_diversify_results` /
+//! `py_compute_reranker_metrics` in `lib.rs`.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+/// Cosine similarity between two equal-length vectors, in `[-1.0, 1.0]`.
+/// Returns `0.0` for empty or zero-norm vectors rather than dividing by zero.
+pub fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
+    if a.is_empty() || b.is_empty() || a.len() != b.len() {
+        return 0.0;
+    }
+
+    let dot: f32 = a.iter().zip(b).map(|(x, y)| x * y).sum();
+    let norm_a: f32 = a.iter().map(|x| x * x).sum::<f32>().sqrt();
+    let norm_b: f32 = b.iter().map(|x| x * x).sum::<f32>().sqrt();
+
+    if norm_a == 0.0 || norm_b == 0.0 {
+        return 0.0;
+    }
+
+    dot / (norm_a * norm_b)
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RankedResult {
@@ -17,6 +32,7 @@ pub struct RankedResult {
     pub rank: usize,
     pub ranking_factors: HashMap<String, f32>,
     pub diversity_score: f32,
+    pub embedding: Vec<f32>,
 }
 
 pub struct RetrievalRanker {
@@ -47,7 +63,8 @@ impl RetrievalRanker {
                     relevance_score: score,
                     rank: 0, // Will be updated
                     ranking_factors: result.scores,
-                    diversity_score: 0.5, // Placeholder
+                    diversity_score: 1.0, // No penalty until diversify() runs.
+                    embedding: result.embedding,
                 }
             })
             .collect();
@@ -97,13 +114,23 @@ impl RetrievalRanker {
         diversified
     }
 
+    /// Penalty in `[0.0, 1.0]` based on how similar `result`'s embedding is
+    /// to the most similar already-selected result's embedding (max, not
+    /// average, so one near-duplicate is enough to trigger the penalty).
+    /// `0.0` when `result` has no embedding or nothing has been selected yet.
     fn _calculate_similarity_penalty(
         &self,
-        _result: &RankedResult,
-        _selected: &[RankedResult],
+        result: &RankedResult,
+        selected: &[RankedResult],
     ) -> f32 {
-        // Placeholder: would compute actual embedding similarity
-        0.1 // 10% penalty per similar result
+        if result.embedding.is_empty() || selected.is_empty() {
+            return 0.0;
+        }
+
+        selected
+            .iter()
+            .map(|s| cosine_similarity(&result.embedding, &s.embedding).max(0.0))
+            .fold(0.0_f32, f32::max)
     }
 }
 
@@ -111,6 +138,7 @@ impl RetrievalRanker {
 pub struct RetrievalResult {
     pub doc_id: String,
     pub scores: HashMap<String, f32>,
+    pub embedding: Vec<f32>,
 }
 
 pub struct RerankerMetrics {
@@ -224,6 +252,7 @@ mod tests {
             results.push(RetrievalResult {
                 doc_id: format!("doc_{}", i),
                 scores,
+                embedding: vec![i as f32, 0.0],
             });
         }
 
@@ -244,11 +273,76 @@ mod tests {
                 rank: i + 1,
                 ranking_factors: HashMap::new(),
                 diversity_score: 0.5,
+                embedding: vec![i as f32, 0.0],
             });
         }
 
         let diversified = ranker.diversify(results, 3);
         assert_eq!(diversified.len(), 3);
+    }
+
+    #[test]
+    fn test_diversification_penalizes_near_duplicate_embeddings() {
+        // doc_dup is embedding-identical to doc_1 (already selected first);
+        // doc_distinct is orthogonal to everything selected so far. Despite
+        // doc_dup having a higher starting relevance_score, the real
+        // cosine-similarity penalty should drop its adjusted score below
+        // doc_distinct's once doc_1 has been selected.
+        let ranker = RetrievalRanker::new();
+        let results = vec![
+            RankedResult {
+                document_id: "doc_1".to_string(),
+                relevance_score: 1.0,
+                rank: 1,
+                ranking_factors: HashMap::new(),
+                diversity_score: 1.0,
+                embedding: vec![1.0, 0.0],
+            },
+            RankedResult {
+                document_id: "doc_dup".to_string(),
+                relevance_score: 0.9,
+                rank: 2,
+                ranking_factors: HashMap::new(),
+                diversity_score: 1.0,
+                embedding: vec![1.0, 0.0], // identical to doc_1
+            },
+            RankedResult {
+                document_id: "doc_distinct".to_string(),
+                relevance_score: 0.5,
+                rank: 3,
+                ranking_factors: HashMap::new(),
+                diversity_score: 1.0,
+                embedding: vec![0.0, 1.0], // orthogonal to doc_1
+            },
+        ];
+
+        let diversified = ranker.diversify(results, 3);
+        let dup = diversified
+            .iter()
+            .find(|r| r.document_id == "doc_dup")
+            .unwrap();
+        let distinct = diversified
+            .iter()
+            .find(|r| r.document_id == "doc_distinct")
+            .unwrap();
+
+        assert!(dup.diversity_score < distinct.diversity_score);
+        assert!(
+            dup.relevance_score < 0.9,
+            "near-duplicate should be penalized below its raw score"
+        );
+        assert_eq!(
+            distinct.relevance_score, 0.5,
+            "orthogonal embedding gets no penalty"
+        );
+    }
+
+    #[test]
+    fn test_cosine_similarity() {
+        assert!((cosine_similarity(&[1.0, 0.0], &[1.0, 0.0]) - 1.0).abs() < 1e-6);
+        assert!(cosine_similarity(&[1.0, 0.0], &[0.0, 1.0]).abs() < 1e-6);
+        assert!((cosine_similarity(&[1.0, 0.0], &[-1.0, 0.0]) + 1.0).abs() < 1e-6);
+        assert_eq!(cosine_similarity(&[], &[1.0]), 0.0);
     }
 
     #[test]
@@ -260,6 +354,7 @@ mod tests {
                 rank: 1,
                 ranking_factors: HashMap::new(),
                 diversity_score: 0.9,
+                embedding: vec![],
             },
             RankedResult {
                 document_id: "doc_2".to_string(),
@@ -267,6 +362,7 @@ mod tests {
                 rank: 2,
                 ranking_factors: HashMap::new(),
                 diversity_score: 0.8,
+                embedding: vec![],
             },
         ];
 

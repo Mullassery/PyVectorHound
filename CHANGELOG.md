@@ -4,6 +4,18 @@ All notable changes to PyVectorHound are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **`RetrievalRanker` is now wired up and exposed to Python**
+  (`pyvectorhound.rank_and_diversify()` / `compute_reranker_metrics()`).
+  `src/retrieval_ranking.rs` was compiled into `_core` but never registered
+  in `src/lib.rs`'s `#[pymodule]`, so it was unreachable from Python; now
+  it's a real, tested, public function. Its diversification penalty was
+  also upgraded from a hardcoded `0.1` placeholder (`_calculate_similarity_penalty`
+  previously ignored the embeddings entirely) to a real cosine-similarity
+  computation against already-selected results' embeddings — a
+  near-duplicate result is now genuinely penalized, an orthogonal one isn't.
+
 ### Fixed
 
 - `pyvectorhound/error_messages.py` had a real `SyntaxError` (missing

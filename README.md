@@ -78,14 +78,36 @@ sentence-transformers, etc.). Without one, pass a precomputed
 `query_embedding` per call. It will not silently generate a random vector
 and pretend the resulting diagnosis means something.
 
-### New: advanced retrieval ranking (Rust core)
+### New: advanced retrieval ranking & diversification (Rust core)
 
-`src/retrieval_ranking.rs` adds a `RetrievalRanker` that combines BM25,
-semantic, recency, and diversity signals into a single multi-criteria
-ranking, plus cross-encoder-style reranking support. It's compiled into the
-native `_core` extension but not yet exposed as a Python-callable function —
-if you need it from Python today, treat it as in-progress internal
-infrastructure rather than a public API.
+`pyvectorhound.rank_and_diversify(results, top_k)` combines BM25, semantic,
+and recency signals (whichever you supply per result) into a single
+multi-criteria ranking, then diversifies the top results using a **real**
+cosine-similarity penalty computed from each document's embedding — a
+near-duplicate of an already-selected result gets pulled down, a result
+that's orthogonal to everything selected so far pays no penalty. (This used
+to be a hardcoded 10%-per-result placeholder that never looked at the
+embeddings at all; it's now backed by `src/retrieval_ranking.rs`'s real
+`cosine_similarity`.) `pyvectorhound.compute_reranker_metrics(...)` then
+gives you MRR/NDCG/Precision@K/Recall@K/diversity against your own
+ground-truth relevant-doc list.
+
+```python
+from pyvectorhound import rank_and_diversify, compute_reranker_metrics
+
+results = [
+    ("doc_1", {"semantic": 0.9}, [1.0, 0.0, 0.3]),   # (doc_id, scores, embedding)
+    ("doc_2", {"semantic": 0.85}, [0.98, 0.1, 0.25]),  # near-duplicate of doc_1
+    ("doc_3", {"semantic": 0.6}, [0.0, 1.0, 0.0]),
+]
+ranked = rank_and_diversify(results, top_k=3)
+metrics = compute_reranker_metrics(
+    [r["document_id"] for r in ranked],
+    [r["diversity_score"] for r in ranked],
+    relevant_docs=["doc_1", "doc_3"],
+    k=3,
+)
+```
 
 ### New: int8 scalar quantization (Rust core)
 

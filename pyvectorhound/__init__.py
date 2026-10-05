@@ -81,6 +81,7 @@ try:
         FixRecommendation,
         FailureCategory,
     )
+    from pyvectorhound.ranking import rank_and_diversify, compute_reranker_metrics
     logger.debug("Successfully imported core modules")
 except ImportError as e:
     logger.error(f"Failed to import core modules: {e}")
@@ -115,6 +116,8 @@ __all__: Final[list[str]] = [
     "DiagnosticReport",
     "FixRecommendation",
     "FailureCategory",
+    "rank_and_diversify",
+    "compute_reranker_metrics",
 ]
 
 logger.info(f"Pyvectorhound {__version__} initialized successfully")

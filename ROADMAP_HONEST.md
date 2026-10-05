@@ -7,16 +7,23 @@ those are stated as missing.
 
 ## What actually works (tested by this audit)
 
-- **Rust core** (`src/`, ~1,105 lines): `cargo build --release
-  --all-features` succeeds; `cargo test --release --all-features` passes
-  17/17; `cargo fmt --check` is clean; `cargo clippy --release
-  --all-features` reports no warnings. Isotropy/coverage/distinctiveness
-  metrics, drift detection, retrieval precision/recall/MRR, quality
-  score, and int8 scalar quantization are real, tested code.
-- **Python package** (~9,800 lines across ~30 modules): `pip install
+- **Rust core** (`src/`, ~1,135 lines): `cargo test --lib` passes 19/19.
+  Isotropy/coverage/distinctiveness metrics, drift detection, retrieval
+  precision/recall/MRR, quality score, int8 scalar quantization, and
+  multi-criteria ranking + real cosine-similarity-based diversification
+  (`RetrievalRanker`, see below) are real, tested code.
+- **Python package** (~11,000 lines across ~31 modules): `pip install
   ".[dev]"` succeeds (via `maturin`/PyO3, not editable-installable —
   `pip install -e .` fails, use a plain `pip install .`). `pytest tests/`
-  passes 174/174 across 10 test files.
+  passes 179/179 across 11 test files.
+- **`RetrievalRanker` ranking & diversification** (`src/retrieval_ranking.rs`,
+  exposed via `pyvectorhound.rank_and_diversify()` /
+  `compute_reranker_metrics()`): real multi-criteria (BM25/semantic/recency)
+  ranking, plus diversification driven by actual cosine similarity between
+  each result's embedding and already-selected results' embeddings — not
+  the earlier hardcoded 10%-per-result placeholder. MRR/NDCG/Precision@K/
+  Recall@K/diversity reranker metrics are computed against a real
+  ground-truth list, not fabricated.
 - **int8 scalar quantization** (`src/quantization.rs`): real, 4x memory
   reduction vs f32, measured max reconstruction error ~0.0039 vs the
   theoretical 8-bit bound ~0.0078.
@@ -34,13 +41,11 @@ those are stated as missing.
 - **SIMD/GPU acceleration** for quantization or metrics: does not exist.
   Deliberately out of scope — needs separate hardware-specific design
   work, not an oversight.
-- **BM25 (keyword search) and reranker diagnostics**: not implemented.
-  `Diagnosis` reports `"UNKNOWN"` for these rather than a fabricated
-  number — this is honest, working-as-designed behavior, not a bug.
-- **`RetrievalRanker`** (`src/retrieval_ranking.rs`, 280 lines, compiled
-  into `_core`): the Rust code exists and has unit tests, but is **not
-  exposed as a callable Python function** — `src/lib.rs`'s `#[pymodule]`
-  block never wraps or registers it. It is unreachable from Python today.
+- **BM25 (keyword search) and reranker-calibration diagnostics**: not
+  implemented. `Diagnosis` reports `"UNKNOWN"` for these rather than a
+  fabricated number — this is honest, working-as-designed behavior, not a
+  bug. (Separate from `RetrievalRanker`'s ranking/diversification, which
+  *is* implemented — see above.)
 - **A generated API reference** (`docs/API.md` or similar): does not
   exist. `docs/GUIDE.md` referenced it before this pass; the reference
   has been removed and replaced with a pointer to source docstrings.
@@ -245,9 +250,13 @@ those are stated as missing.
   not deleted, not given tests, not given real `pyproject.toml` extras.
   Needs a maintainer decision on whether these are worth keeping (see
   Technical Debt #1).
-- **`RetrievalRanker` Python bindings**: not added. Wiring
-  `src/retrieval_ranking.rs` into `src/lib.rs`'s `#[pymodule]` and giving
-  it a Python-facing API is a real feature addition, not a docs fix.
+- **`RetrievalRanker` Python bindings**: at the time of this 2026-09-20
+  audit, not added (wiring `src/retrieval_ranking.rs` into `src/lib.rs`'s
+  `#[pymodule]` was judged a real feature addition, not a docs fix, so it
+  was left out of that pass). Since then: done — see "What actually
+  works" above. The diversity penalty was also upgraded from a hardcoded
+  10%-per-result placeholder to a real cosine-similarity computation in
+  the same change.
 - **`cli.py` packaging** (`[project.scripts]`): not added, since it
   changes the installed package's public interface and needs end-to-end
   verification + a version bump, not a silent addition in a docs pass.

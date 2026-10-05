@@ -14,6 +14,8 @@ use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
 use pyo3::Bound;
 use quantization::{dequantize, dequantize_batch, quantize, quantize_batch, QuantizationParams};
+use retrieval_ranking::{RankedResult, RerankerMetrics, RetrievalRanker, RetrievalResult};
+use std::collections::HashMap;
 
 /// Build a Python dict from quantization params: {"scale", "offset", "min", "max"}.
 fn params_to_dict<'py>(
@@ -178,6 +180,102 @@ fn py_dequantize_batch(
     Ok(dequantize_batch(&values, &params))
 }
 
+/// Build a Python list of dicts from ranked results:
+/// `{"document_id", "relevance_score", "rank", "diversity_score", "ranking_factors"}`.
+fn ranked_results_to_pylist<'py>(py: Python<'py>, ranked: &[RankedResult]) -> PyResult<PyObject> {
+    let list = PyList::empty(py);
+    for r in ranked {
+        let dict = PyDict::new(py);
+        dict.set_item("document_id", &r.document_id)?;
+        dict.set_item("relevance_score", r.relevance_score)?;
+        dict.set_item("rank", r.rank)?;
+        dict.set_item("diversity_score", r.diversity_score)?;
+        dict.set_item("ranking_factors", &r.ranking_factors)?;
+        list.append(dict)?;
+    }
+    Ok(list.into())
+}
+
+/// Rank results by multi-criteria score, then diversify the top `top_k`
+/// using real cosine-similarity penalties against already-selected
+/// embeddings (not a placeholder -- see `retrieval_ranking.rs`).
+///
+/// `results` is `(document_id, scores, embedding)` per candidate.
+/// `scores` may contain `"bm25"`, `"semantic"`, `"recency"` keys (missing
+/// keys default to `0.0`); `embedding` is that document's real vector
+/// (pass `[]` to exclude a document from diversity scoring).
+///
+/// Returns a list of dicts ordered by the final diversity-adjusted
+/// `relevance_score`; see `ranked_results_to_pylist` for the dict shape.
+#[pyfunction]
+fn py_rank_and_diversify_results(
+    py: Python,
+    results: Vec<(String, HashMap<String, f32>, Vec<f32>)>,
+    top_k: usize,
+) -> PyResult<PyObject> {
+    let retrieval_results: Vec<RetrievalResult> = results
+        .into_iter()
+        .map(|(doc_id, scores, embedding)| RetrievalResult {
+            doc_id,
+            scores,
+            embedding,
+        })
+        .collect();
+
+    let ranker = RetrievalRanker::new();
+    let ranked = ranker.rank(retrieval_results);
+    let diversified = ranker.diversify(ranked, top_k);
+
+    ranked_results_to_pylist(py, &diversified)
+}
+
+/// Compute MRR, NDCG, Precision@K, Recall@K, and average diversity score
+/// for an already-ranked (optionally diversified) result list.
+///
+/// `ranked_document_ids` and `diversity_scores` must be the same length and
+/// in rank order (index 0 = rank 1); `diversity_scores` can be the
+/// `diversity_score` field from `py_rank_and_diversify_results`'s output,
+/// or all `1.0` if diversify wasn't run.
+#[pyfunction]
+fn py_compute_reranker_metrics(
+    py: Python,
+    ranked_document_ids: Vec<String>,
+    diversity_scores: Vec<f32>,
+    relevant_docs: Vec<String>,
+    k: usize,
+) -> PyResult<PyObject> {
+    if ranked_document_ids.len() != diversity_scores.len() {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "ranked_document_ids and diversity_scores must have the same length",
+        ));
+    }
+
+    let ranked: Vec<RankedResult> = ranked_document_ids
+        .into_iter()
+        .zip(diversity_scores)
+        .enumerate()
+        .map(|(i, (document_id, diversity_score))| RankedResult {
+            document_id,
+            relevance_score: 0.0,
+            rank: i + 1,
+            ranking_factors: HashMap::new(),
+            diversity_score,
+            embedding: Vec::new(),
+        })
+        .collect();
+
+    let metrics = RerankerMetrics::calculate(&ranked, &relevant_docs, k);
+
+    let dict = PyDict::new(py);
+    dict.set_item("mrr", metrics.mrr)?;
+    dict.set_item("ndcg", metrics.ndcg)?;
+    dict.set_item("precision_at_k", metrics.precision_at_k)?;
+    dict.set_item("recall_at_k", metrics.recall_at_k)?;
+    dict.set_item("diversity_score", metrics.diversity_score)?;
+
+    Ok(dict.into())
+}
+
 /// PyVectorHound Python module
 #[pymodule]
 fn _core(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -191,6 +289,8 @@ fn _core(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_dequantize_vector, m)?)?;
     m.add_function(wrap_pyfunction!(py_quantize_batch, m)?)?;
     m.add_function(wrap_pyfunction!(py_dequantize_batch, m)?)?;
+    m.add_function(wrap_pyfunction!(py_rank_and_diversify_results, m)?)?;
+    m.add_function(wrap_pyfunction!(py_compute_reranker_metrics, m)?)?;
 
     Ok(())
 }
