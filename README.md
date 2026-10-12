@@ -1,5 +1,7 @@
 # PyVectorHound
 
+[![Grapify](https://img.shields.io/badge/Grapify-Code%20Scan-purple)](https://grapify.ai)
+
 **Diagnose why your RAG retrieval is returning the wrong documents.**
 
 PyVectorHound is a component-level diagnostic engine for retrieval-augmented
