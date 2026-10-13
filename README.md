@@ -1,21 +1,12 @@
 # PyVectorHound
 
-[![Graphify](https://img.shields.io/badge/Graphify-knowledge%20graph-blue)](https://github.com/Graphify-Labs/graphify)
-
 **Diagnose why your RAG retrieval is returning the wrong documents.**
 
-PyVectorHound is a component-level diagnostic engine for retrieval-augmented
-generation (RAG) pipelines. Point it at a set of search results (from your
-own pipeline, or from a live Qdrant/Chroma/Milvus/pgvector/Weaviate
-instance) and it isolates *which stage* is failing — embedding quality or
-vector search ranking — and gives you plain-English, ranked recommendations.
-
-[![PyPI](https://img.shields.io/pypi/v/pyvectorhound)](https://pypi.org/project/pyvectorhound)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/pyvectorhound)](https://pypi.org/project/pyvectorhound/)
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8%2B-blue)](https://www.python.org)
 [![Tests](https://github.com/Mullassery/PyVectorHound/actions/workflows/ci.yml/badge.svg)](https://github.com/Mullassery/PyVectorHound/actions/workflows/ci.yml)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
-
----
+[![Graphify](https://img.shields.io/badge/Graphify-knowledge%20graph-blue)](https://github.com/Graphify-Labs/graphify)
 
 > **Not to be confused with [PyAgentHound](https://github.com/Mullassery/PyAgentHound):** PyVectorHound diagnoses RAG retrieval failures; PyAgentHound traces and root-causes AI agent execution failures.
 
@@ -40,180 +31,75 @@ Part of the Mullassery open-source family. These tools have similar names — he
 
 [Browse all projects →](https://github.com/Mullassery?tab=repositories)
 
-## Use cases
+## What it is
 
-- **A RAG pipeline is returning irrelevant documents and you don't know
-  whether it's the embeddings or the ranking** — `Diagnosis`/`Hound.diagnose()`
-  isolates which stage is at fault instead of forcing you to eyeball
-  cosine-similarity scores.
-- **Catching retrieved documents that look similar but contradict the
-  query** — the LLM-as-judge faithfulness check, when pure distance metrics
-  would score them as a good match.
-- **Comparing embedding models or database configs objectively** — track
-  metrics over time with `Hound.track_metric()` so quality thresholds are
-  relative to your own baseline, not a hardcoded cutoff.
-- **Not yet a good fit for:** diagnosing BM25/keyword-search or reranker
-  stages specifically (both report `UNKNOWN` — not implemented, not
-  guessed); a fully automated model-comparison quality score without
-  supplying your own `quality_fn`.
+PyVectorHound is a component-level diagnostic engine for retrieval-augmented generation
+(RAG) pipelines. Point it at a set of search results (from your own pipeline, or from a live
+Qdrant/Chroma/Milvus/pgvector/Weaviate instance) and it isolates *which stage* is failing —
+embedding quality or vector search ranking — and gives you plain-English, ranked
+recommendations. It does **not** run an embedding model, a reranker, or BM25 for you, and it
+is **not** a vector database: it's a diagnostic layer that sits on top of retrieval results
+you already have and tells you, with real computed metrics, what's wrong.
 
-## What this actually does today
+## Features
 
-PyVectorHound does **not** run an embedding model, a reranker, or BM25 for
-you, and it is **not** a vector database. It's a diagnostic layer that sits
-on top of retrieval results you already have (or that it fetches from your
-vector DB) and tells you, with real computed metrics, what's wrong:
+- **Embedding-space diagnostics** (isotropy, coverage, distinctiveness) computed by a Rust
+  extension (`pyvectorhound._core`, built via PyO3) from the real per-document embeddings
+  your database adapter's `get_embeddings()` returns.
+- **Vector search accuracy** (precision, recall, MRR) computed against `expected_docs` you
+  supply as ground truth.
+- **LLM-as-judge faithfulness / contradiction checking** — pass `document_texts` and an
+  `llm_judge_fn` (no LLM client bundled) and `Diagnosis` flags retrieved documents that
+  score well on embedding similarity but are actually irrelevant to or contradict the query.
+- **Root cause + ranked recommendations** in plain English, combining the above.
+- **Concurrent batch evaluation** via `Hound.diagnose_batch()`, with automatic
+  retry/backoff on `embed_fn`/`llm_judge_fn` calls.
+- **Model-agnostic quality thresholds** — `Hound.track_metric()` switches GOOD/MODERATE/WEAK
+  status from a fixed cutoff to your own historical baseline.
+- **Ranking & diversification** via `rank_and_diversify(results, top_k)`, combining BM25,
+  semantic, and recency signals, then penalizing near-duplicates using real cosine
+  similarity. `compute_reranker_metrics(...)` reports MRR/NDCG/Precision@K/Recall@K/diversity
+  against your ground truth.
+- **int8 scalar quantization** (`src/quantization.rs`) for shrinking large local vector
+  indices (4x memory reduction, bounded reconstruction error).
 
-- **Embedding-space diagnostics** (isotropy, coverage, distinctiveness) —
-  computed by a Rust extension (`pyvectorhound._core`, built via PyO3) from
-  the real per-document embeddings your database adapter's `get_embeddings()`
-  returns.
-- **Vector search accuracy** (precision, recall, MRR) — computed against
-  `expected_docs` you supply as ground truth.
-- **LLM-as-judge faithfulness / contradiction checking** — pass
-  `document_texts` and an `llm_judge_fn` (no LLM client bundled, same
-  pattern as `embed_fn`) and `Diagnosis` will flag retrieved documents that
-  score well on embedding similarity but are actually irrelevant to or
-  contradict the query — the failure mode pure distance metrics can't see.
-- **Root cause + ranked recommendations** — plain-English output combining
-  the above.
-- **Concurrent batch evaluation** — `Hound.diagnose_batch()` runs many
-  queries at once on a thread pool (with automatic retry/backoff on
-  `embed_fn`/`llm_judge_fn` calls) instead of one at a time, for large-scale
-  evaluation runs.
-- **Model-agnostic quality thresholds** — once you've tracked a few
-  diagnoses with `Hound.track_metric()`, GOOD/MODERATE/WEAK status is
-  computed relative to your own historical baseline instead of a fixed
-  cutoff, so it doesn't drift when you switch embedding models.
+## Who it's for
 
-BM25 (keyword search) and reranker diagnostics are reported as `"UNKNOWN"`:
-PyVectorHound doesn't run a keyword-search index or a reranker itself, and
-`Diagnosis` doesn't yet accept external BM25/reranker scores as input, so
-rather than fabricate a number for a component it can't measure, it says so.
+- **Teams whose RAG pipeline is returning irrelevant documents** and who don't know whether
+  it's the embeddings or the ranking — `Diagnosis`/`Hound.diagnose()` isolates which stage is
+  at fault instead of forcing you to eyeball cosine-similarity scores.
+- **Anyone catching retrieved documents that look similar but contradict the query** — the
+  LLM-as-judge faithfulness check, when pure distance metrics would score them as a good
+  match.
+- **Engineers comparing embedding models or database configs objectively** — track metrics
+  over time with `Hound.track_metric()` so quality thresholds are relative to your own
+  baseline, not a hardcoded cutoff.
 
-If a component doesn't have enough input to measure honestly (no `adapter`,
-fewer than 2 documents with embeddings, or no `expected_docs`), it's
-reported as `"UNKNOWN"` with an explanation of what to supply — never a
-made-up number.
+## What it is not
 
-**PyVectorHound does not bundle an embedding model.** If you want
-`Hound.diagnose()` to embed your query text for you, pass it an `embed_fn`
-(a thin wrapper around whatever you already use — OpenAI, Cohere,
-sentence-transformers, etc.). Without one, pass a precomputed
-`query_embedding` per call. It will not silently generate a random vector
-and pretend the resulting diagnosis means something.
+- **Not an embedding model, reranker, or vector database.** It brings none of those, and
+  won't silently generate a random vector and pretend the resulting diagnosis means
+  something: pass an `embed_fn` or a precomputed `query_embedding`.
+- **Not a BM25/keyword-search or reranker diagnostic.** Both components report `UNKNOWN` —
+  not implemented, not guessed — because `Diagnosis` doesn't yet accept external
+  BM25/reranker scores.
+- **Not a full retrieve-then-generate evaluator.** Unlike Ragas, PyVectorHound never
+  requires an LLM to generate a final answer, so it has no visibility into a
+  generation-layer failure.
+- **Not fully integrated into storage/retrieval.** The int8 quantization functions are
+  low-level quantize/dequantize primitives, not wired into `Hound`'s storage/retrieval path.
+- **Some methods remain unimplemented:** `Hound.compare_metrics()` and `Hound.detect_drift()`
+  raise `NotImplementedError`; `ModelComparison`/`Hound.compare_models()` reports real
+  published cost/latency metadata but cannot measure quality unless you pass `quality_fn`.
 
-### New: advanced retrieval ranking & diversification (Rust core)
+## Project status
 
-`pyvectorhound.rank_and_diversify(results, top_k)` combines BM25, semantic,
-and recency signals (whichever you supply per result) into a single
-multi-criteria ranking, then diversifies the top results using a **real**
-cosine-similarity penalty computed from each document's embedding — a
-near-duplicate of an already-selected result gets pulled down, a result
-that's orthogonal to everything selected so far pays no penalty. (This used
-to be a hardcoded 10%-per-result placeholder that never looked at the
-embeddings at all; it's now backed by `src/retrieval_ranking.rs`'s real
-`cosine_similarity`.) `pyvectorhound.compute_reranker_metrics(...)` then
-gives you MRR/NDCG/Precision@K/Recall@K/diversity against your own
-ground-truth relevant-doc list.
-
-```python
-from pyvectorhound import rank_and_diversify, compute_reranker_metrics
-
-results = [
-    ("doc_1", {"semantic": 0.9}, [1.0, 0.0, 0.3]),   # (doc_id, scores, embedding)
-    ("doc_2", {"semantic": 0.85}, [0.98, 0.1, 0.25]),  # near-duplicate of doc_1
-    ("doc_3", {"semantic": 0.6}, [0.0, 1.0, 0.0]),
-]
-ranked = rank_and_diversify(results, top_k=3)
-metrics = compute_reranker_metrics(
-    [r["document_id"] for r in ranked],
-    [r["diversity_score"] for r in ranked],
-    relevant_docs=["doc_1", "doc_3"],
-    k=3,
-)
-```
-
-### New: int8 scalar quantization (Rust core)
-
-`src/quantization.rs` adds per-vector int8 scalar quantization for shrinking
-the memory footprint of large local vector indices. Each `f32` vector is
-mapped linearly to the `i8` range (-128..=127) using that vector's own
-min/max, alongside a `(scale, offset)` pair needed to dequantize it back to
-an approximate `f32` vector. This is scalar quantization, not product
-quantization, and it isn't SIMD/GPU accelerated — both are out of scope for
-this feature.
-
-**Tradeoff:** storing `i8` instead of `f32` is a **4x memory reduction**
-for the vector data (1 byte/dim vs 4 bytes/dim), at the cost of bounded
-reconstruction error — max absolute error per element is at most
-`(max - min) / 255` for the vector being quantized (half a quantization
-step in practice). For a typical normalized embedding in `[-1, 1]`, that's
-a worst-case error bound of about `0.0078` per dimension; measured max
-error on a random 384-dim `[-1, 1]` vector in the test suite was `~0.0039`.
-Constant vectors (including all-zero) round-trip exactly.
-
-Exposed to Python via `pyvectorhound._core`:
-
-```python
-from pyvectorhound import _core
-
-# Single vector
-result = _core.py_quantize_vector([0.12, -0.87, 0.5, 0.0])
-# {"values": [i8, ...], "scale": float, "offset": float, "min": float, "max": float}
-restored = _core.py_dequantize_vector(result["values"], result["scale"], result["offset"])
-
-# Batch (one scale/offset per vector)
-batch = _core.py_quantize_batch([[0.1, 0.2], [-1.0, 1.0]])
-# {"values": [[i8, ...], ...], "params": [{"scale":..., "offset":..., "min":..., "max":...}, ...]}
-restored_batch = _core.py_dequantize_batch(
-    batch["values"],
-    [p["scale"] for p in batch["params"]],
-    [p["offset"] for p in batch["params"]],
-)
-```
-
-This is currently a low-level building block (quantize/dequantize
-primitives) rather than integrated into `Hound`'s storage/retrieval path —
-if you want quantized on-disk storage for your own index today, call these
-functions directly.
-
-### Not yet real (known limitations)
-
-Being upfront about what's still a stub, rather than leaving it to look
-finished:
-
-- `ModelComparison` / `Hound.compare_models()` reports real, published
-  cost/latency metadata for known models, but has no way to measure quality
-  (F1/NDCG) on its own — pass `quality_fn` for real numbers, or it reports
-  quality as unmeasured.
-- `Hound.compare_metrics()` and `Hound.detect_drift()` raise
-  `NotImplementedError`; `QualityScorer.trend_analysis()` instead returns a
-  dict with `"direction": "unknown"` and an explanation. None of the three
-  has a historical data store to compute a real trend from. Use
-  `Hound.track_metric()` + `Hound.get_trend_report()` (backed by the real,
-  tested `TrendAnalyzer`) instead.
-- As of v1.5.0 (current), PyPI carries a macOS arm64 / CPython 3.11 wheel
-  plus a source distribution (`sdist`). The wheel is still single-platform/single-ABI (no
-  `abi3` build yet — see below), but the sdist means `pip install
-  pyvectorhound` on any other interpreter or OS now builds the current
-  version from source instead of silently falling back to an old release,
-  as long as a Rust toolchain is available locally. If the sdist build
-  fails for you, install straight from the repo instead:
-  `pip install git+https://github.com/Mullassery/PyVectorHound.git`.
-  A proper multi-platform wheel matrix (built in CI, `abi3` so one wheel
-  covers multiple CPython versions) is still open work.
-- GitHub Actions CI (the badge above) is green as of this pass — a prior
-  revision of this note described the `dtolnay/rust-toolchain` setup step
-  as broken (missing `toolchain` input), but `ci.yml` already uses the
-  `@stable` form, which doesn't need one; CI has passed on every push since
-  the fix. The full test suite passes (174/174 as of this writing, run via
-  `pytest tests/ -v` with the Rust extension built).
-- OpenTelemetry / LangChain / LlamaIndex / MCP integrations, the CLI, and
-  the REST server exist and have passing tests but have seen far less
-  real-world use than the core `Hound`/`Diagnosis` path above.
-
----
+**Production/Stable** per the package classifier (version 1.6.0), with the honest gaps
+above. If a component doesn't have enough input to measure honestly (no `adapter`, fewer
+than 2 documents with embeddings, or no `expected_docs`), it's reported as `UNKNOWN` with an
+explanation of what to supply — never a made-up number. See
+[`ROADMAP_HONEST.md`](ROADMAP_HONEST.md) for a plain list of what's not built, what's
+untested, and known technical debt. Changes are tracked in [CHANGELOG.md](CHANGELOG.md).
 
 ## Installation
 
@@ -231,17 +117,22 @@ pip install pyvectorhound[weaviate]   # Weaviate
 pip install pyvectorhound[pgvector]   # PostgreSQL + pgvector
 ```
 
-Requires Python 3.8+.
+Requires Python 3.8+. PyPI currently carries a macOS ARM64 / CPython 3.9 wheel only (no
+sdist and no `abi3` build for 1.6.0), so on other platforms or interpreter versions,
+install straight from the repo instead (a Rust toolchain is required):
 
----
+```bash
+pip install git+https://github.com/Mullassery/PyVectorHound.git
+```
 
-## Quick start: diagnose results you already have
+## Quick start
 
-This is the fastest way to try it — no live database or embedding model
-needed. `Diagnosis` fetches per-document embeddings for you via a small
-adapter object (anything with a `get_embeddings(doc_ids) -> dict` method);
-without one, the embedding component honestly reports `"UNKNOWN"` instead
-of a fabricated score.
+### Diagnose results you already have
+
+This is the fastest way to try it — no live database or embedding model needed. `Diagnosis`
+fetches per-document embeddings for you via a small adapter object (anything with a
+`get_embeddings(doc_ids) -> dict` method); without one, the embedding component honestly
+reports `"UNKNOWN"` instead of a fabricated score.
 
 ```python
 from pyvectorhound import Diagnosis
@@ -276,10 +167,10 @@ for rec in diagnosis.recommendations():
 print(diagnosis.hunt())  # full plain-English report
 ```
 
-A runnable version (with synthetic embeddings so it works with no setup) is
-in [`examples/retrieval_debug.py`](examples/retrieval_debug.py).
+A runnable version (with synthetic embeddings so it works with no setup) is in
+[`examples/retrieval_debug.py`](examples/retrieval_debug.py).
 
-## Quick start: diagnose against a live vector database
+### Diagnose against a live vector database
 
 ```python
 from pyvectorhound import Hound
@@ -300,14 +191,12 @@ diagnosis = hound.diagnose(
 print(diagnosis.hunt())
 ```
 
-`Hound` connects lazily — constructing it doesn't require a live server,
-only calling `diagnose()` (or another querying method) does. `diagnose()`
-already passes `self.adapter` into `Diagnosis`, so embedding-space
-diagnostics work out of the box against your real database.
+`Hound` connects lazily — constructing it doesn't require a live server, only calling
+`diagnose()` (or another querying method) does.
 
----
+## Usage
 
-## Diagnostics it runs
+### Diagnostics it runs
 
 | Component | What it measures | Requires |
 |---|---|---|
@@ -317,20 +206,16 @@ diagnostics work out of the box against your real database.
 | **BM25 (keyword)** | Not implemented — reports `UNKNOWN` | n/a |
 | **Reranker** | Not implemented — reports `UNKNOWN` | n/a |
 
-Every measured component is computed for real from the input you give it;
-nothing is guessed when the input isn't there.
+Every measured component is computed for real from the input you give it; nothing is guessed
+when the input isn't there.
 
----
-
-## Faithfulness checking and batch evaluation
+### Faithfulness checking and batch evaluation
 
 ```python
 from pyvectorhound import Hound
 
 def judge(query: str, doc_texts: list[str]) -> dict:
-    # Wrap whatever LLM client you already use -- PyVectorHound doesn't
-    # bundle one. Must return at least a "contradiction_score" (0.0-1.0,
-    # lower is more faithful) and/or "faithful"/"contradicted_count".
+    # Wrap whatever LLM client you already use -- PyVectorHound doesn't bundle one.
     response = my_llm_client.judge_faithfulness(query, doc_texts)
     return {
         "contradiction_score": response.score,
@@ -354,8 +239,8 @@ diagnoses = hound.diagnose_batch(
 )
 ```
 
-Track a few diagnoses over time and quality-status classification switches
-from a fixed cutoff to your own historical baseline automatically:
+Track a few diagnoses over time and quality-status classification switches from a fixed
+cutoff to your own historical baseline automatically:
 
 ```python
 hound.track_metric("vector_search_precision", diagnosis.metrics()["vector_search"]["precision"])
@@ -363,84 +248,86 @@ hound.track_metric("vector_search_precision", diagnosis.metrics()["vector_search
 # (GOOD/MODERATE/WEAK) relative to that baseline instead of a fixed number.
 ```
 
----
+### Ranking & diversification
 
-## vs Ragas
+```python
+from pyvectorhound import rank_and_diversify, compute_reranker_metrics
 
-Ragas is the closest OSS competitor — the standard for RAG evaluation
-metrics. We ran both against the same real corpus (168 real chunks from 3
-live English Wikipedia articles: Transformer architecture, attention
-mechanisms, retrieval-augmented generation), real embeddings
-(`nomic-embed-text` via a local Ollama instance, not fabricated vectors),
-and a real local LLM judge/generator (`qwen2.5:7b-instruct` via Ollama — no
-cloud API keys used or needed). 4 real queries, including 2 deliberately
-hard cases (one genuinely unanswerable from the corpus, one prone to
-retrieving a topically-similar-but-wrong article).
+results = [
+    ("doc_1", {"semantic": 0.9}, [1.0, 0.0, 0.3]),     # (doc_id, scores, embedding)
+    ("doc_2", {"semantic": 0.85}, [0.98, 0.1, 0.25]),  # near-duplicate of doc_1
+    ("doc_3", {"semantic": 0.6}, [0.0, 1.0, 0.0]),
+]
+ranked = rank_and_diversify(results, top_k=3)
+metrics = compute_reranker_metrics(
+    [r["document_id"] for r in ranked],
+    [r["diversity_score"] for r in ranked],
+    relevant_docs=["doc_1", "doc_3"],
+    k=3,
+)
+```
+
+### int8 scalar quantization
+
+`src/quantization.rs` maps each `f32` vector linearly to the `i8` range (-128..=127) using
+that vector's own min/max, alongside a `(scale, offset)` pair needed to dequantize it. This
+is scalar quantization, not product quantization, and it isn't SIMD/GPU accelerated. Storing
+`i8` instead of `f32` is a **4x memory reduction**, at the cost of bounded reconstruction
+error (max absolute error per element is at most `(max - min) / 255`). Constant vectors
+(including all-zero) round-trip exactly.
+
+```python
+from pyvectorhound import _core
+
+result = _core.py_quantize_vector([0.12, -0.87, 0.5, 0.0])
+# {"values": [i8, ...], "scale": float, "offset": float, "min": float, "max": float}
+restored = _core.py_dequantize_vector(result["values"], result["scale"], result["offset"])
+```
+
+### Other tools
+
+- `hound.quality_scorer()` — `QualityScorer` for scoring an embedding's validity and, given
+  corpus neighbors via the adapter, real isotropy/coverage/distinctiveness.
+- `hound.benchmark()` — latency percentiles and database/embedding-model comparisons.
+- `hound.analyze_trends()` — track metrics over time and detect drift, regressions, and
+  anomalies from real tracked values.
+- `hound.tracer()` / `hound.replayer()` — capture a retrieval pipeline run and replay it
+  under different configurations to compare recall/latency.
+
+### vs Ragas
+
+Ragas is the closest OSS competitor — the standard for RAG evaluation metrics. We ran both
+against the same real corpus (168 real chunks from 3 live English Wikipedia articles), real
+embeddings (`nomic-embed-text` via a local Ollama instance), and a real local LLM
+judge/generator (`qwen2.5:7b-instruct` via Ollama — no cloud API keys used or needed),
+across 4 real queries including 2 deliberately hard cases.
 
 | Query | PyVectorHound `vector_search` | PyVectorHound `faithfulness` | Ragas `context_precision` | Ragas `context_recall` | Ragas `faithfulness` |
 |---|---|---|---|---|---|
-| "easy" (attention mechanism) | WEAK — 0% precision/recall (retrieved 0/4 chunks from the *expected* article) | GOOD (retrieved passage still explains the mechanism) | 0.9999 | 1.0 | 1.0 |
-| "cross_chunk" (how RAG reduces hallucination) | GOOD — 100% precision/recall | GOOD (retrieved passages are on-topic) | 0.9999 | 1.0 | **0.0** (generated answer refused to use the context) |
-| "no_answer" (OpenAI's exact founding date — not in corpus) | UNKNOWN (correctly declines to guess without ground truth) | GOOD (0 faithful/0 contradicted — no false positive) | **0.0** (correctly flags irrelevant context) | 1.0 | 1.0 |
+| "easy" (attention mechanism) | WEAK — 0% precision/recall | GOOD | 0.9999 | 1.0 | 1.0 |
+| "cross_chunk" (how RAG reduces hallucination) | GOOD — 100% precision/recall | GOOD | 0.9999 | 1.0 | **0.0** |
+| "no_answer" (a date not in corpus) | UNKNOWN (correctly declines to guess) | GOOD | **0.0** | 1.0 | 1.0 |
 | "distractor" (self- vs cross-attention) | WEAK — 50% precision | GOOD | 0.9999 | 1.0 | 1.0 |
 
-**What this actually shows, not just the numbers:** on the "easy" and
-"distractor" queries, PyVectorHound's `vector_search` metric scored the
-retrieval as weak/failing — but that's a real limitation of *this test's*
-ground truth, not necessarily a real retrieval failure: the expected-docs
-ground truth was defined by *which Wikipedia article* a chunk came from,
-and in both cases the retrieved chunks (from a different article) still
-genuinely contained the answer, confirmed by both LLM judges. Ragas's
-`context_precision`/`context_recall`, which score against a written
-reference *answer* rather than document identity, aren't fooled by that —
-a real methodological lesson: document-identity ground truth is brittle,
-answer-based ground truth is more robust. That's a real tradeoff of
-PyVectorHound's approach, not a bug we found and fixed.
+Two real methodological lessons came out of this, not bugs: (1) document-identity ground
+truth is brittle — in the "easy"/"distractor" cases the retrieved chunks (from a different
+article) still contained the answer, which answer-based metrics like Ragas's aren't fooled
+by; (2) the "cross_chunk" row shows the real scope difference — PyVectorHound judges the
+*retrieved passages*, Ragas judges the *generated answer* against context, so Ragas caught a
+generation-layer failure PyVectorHound has no visibility into. That's the tradeoff: diagnose
+the retrieval layer standalone (no generation step needed), or evaluate the full
+retrieve-then-generate pipeline end to end.
 
-The "cross_chunk" row shows the real, useful architectural difference
-between the two tools: PyVectorHound's `faithfulness` check judges the
-*retrieved passages* (are they relevant/non-contradictory?) and correctly
-said GOOD — they were. Ragas's `faithfulness` judges the *generated
-answer*'s claims against the context, and correctly caught that the LLM's
-actual answer declined to use good context and hedged instead — a real
-generation-layer failure that PyVectorHound has no visibility into,
-because it never requires an LLM to generate a final answer at all.
-That's the real scope difference: PyVectorHound diagnoses the retrieval
-layer standalone (useful when you don't have or don't want to run a full
-generation step); Ragas evaluates the full retrieve-then-generate
-pipeline end to end, which needs a real generated answer and a written
-reference answer to run at all.
+## Documentation
 
-One real, reproducible gotcha found while building this benchmark:
-PyVectorHound's `ChromaAdapter.connect()` (`database.py`) calls
-`chromadb.Client()` with no persistence path, so it only works when
-populated in the *same process* — a separate script/process using its own
-`chromadb.Client()` cannot see data another process wrote, since Chroma's
-ephemeral in-memory client isn't shared across process boundaries (it is
-shared across separate `Client()` calls *within* one process). Not a code
-bug — this is real, documented Chroma default behavior — but worth
-knowing before assuming `endpoint=""` means "persistent local store."
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — architecture.
+- [docs/GUIDE.md](docs/GUIDE.md) — usage guide.
+- [ROADMAP_HONEST.md](ROADMAP_HONEST.md) — what's not built, what's untested, and known
+  technical debt.
+- [CHANGELOG.md](CHANGELOG.md) — release history.
+- [examples/](examples/) — runnable scripts.
 
-## Other tools
-
-- `hound.quality_scorer()` — `QualityScorer` for scoring an embedding's
-  validity, and (given corpus neighbors via the adapter) real
-  isotropy/coverage/distinctiveness against the corpus.
-- `hound.benchmark()` — `PerformanceBenchmark` for latency percentiles and
-  database/embedding-model comparisons.
-- `hound.analyze_trends()` — `TrendAnalyzer` for tracking metrics over time
-  and detecting drift, regressions, and anomalies from real tracked values.
-- `hound.tracer()` / `hound.replayer()` — capture a retrieval pipeline run
-  and replay it under different configurations to compare recall/latency.
-
-See [`examples/`](examples/) for runnable scripts, and
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) / [`docs/GUIDE.md`](docs/GUIDE.md)
-for more detail. See [`ROADMAP_HONEST.md`](ROADMAP_HONEST.md) for a plain
-list of what's not built, what's untested, and known technical debt.
-
----
-
-## Development
+## Contributing
 
 ```bash
 git clone https://github.com/Mullassery/PyVectorHound.git
@@ -451,7 +338,22 @@ pip install -e ".[dev]"
 pytest tests/ -v
 ```
 
----
+CI (the badge above) is green and runs the full test suite. OpenTelemetry / LangChain /
+LlamaIndex / MCP integrations, the CLI, and the REST server exist and have passing tests but
+have seen far less real-world use than the core `Hound`/`Diagnosis` path.
+
+## Related projects
+
+Other tools from the same family, for adjacent parts of the RAG/LLM stack:
+
+- [PyAgentHound](https://github.com/Mullassery/PyAgentHound) — debug AI systems by tracing execution, detecting failures, identifying root causes, and explaining bad agent results.
+- [PyStreamPDF](https://github.com/Mullassery/PyStreamPDF) — reduce RAG costs by extracting only what matters from PDFs: selective retrieval, structure analysis, token-efficient extraction.
+- [PyStreamMCP](https://github.com/Mullassery/PyStreamMCP) — intelligence layer for AI agents: query planning, context discovery, and cost optimization.
+- [PyTokenCalc](https://github.com/Mullassery/PyTokenCalc) — count tokens and estimate LLM costs across 20+ providers before you send a request.
+- [OpenAnchor](https://github.com/Mullassery/OpenAnchor) — token intelligence middleware for multi-provider LLM usage: 6D attribution, pattern detection, recommendations, OTEL export.
+- [StatGuardian](https://github.com/Mullassery/StatGuardian) — fast, declarative data quality framework (Rust): schema validation, drift detection, anomaly detection.
+
+[Browse all projects →](https://github.com/Mullassery?tab=repositories)
 
 ## License
 
