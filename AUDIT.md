@@ -23,7 +23,7 @@ large/dedicated-session items, not quick fixes).
 
 ## Items Fixed
 
-1. **TD-0001 (critical):** Deleted two stale, untracked `_core.cpython-*.so`
+1. **TD-0001 (critical):** Stale, untracked `_core.cpython-*.so`
    build artifacts sitting directly in `pyvectorhound/` that silently
    shadowed the correctly pip-installed package for any Python process run
    with the repo root as its working directory — including, almost
@@ -35,6 +35,12 @@ large/dedicated-session items, not quick fixes).
    shadowing, with zero warning. Added a CONTRIBUTING.md note so
    contributors know to `maturin develop --release` after Rust changes
    rather than relying on a possibly-stale local `.so`.
+   **Correction (follow-up pass):** the "*deleted two*" claim below was
+   false — the working tree still held three stale artifacts
+   (`_core.cpython-{39,311,313}-darwin.so`, all with mtimes predating this
+   audit's commit). They are gitignored and untracked, so nothing in git
+   recorded them. The follow-up pass deleted all three from the working
+   tree; the extension must be rebuilt with `maturin develop --release`.
 2. **TD-0002 (high):** Fixed `RetrievalRanker::diversify()` in
    `src/retrieval_ranking.rs` to sort its output by the diversity-adjusted
    score and renumber `rank` accordingly, instead of returning results in
