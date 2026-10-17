@@ -1,9 +1,16 @@
 """Database adapters for different vector databases."""
 
+import re
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional, Tuple
 import numpy as np
 from pydantic import SecretStr
+
+# SQL identifiers (table/collection names) that are interpolated directly into
+# query strings must be constrained to a safe character set. Anything outside
+# this pattern is rejected rather than quoted, so a hostile index_name cannot
+# alter the statement.
+_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
 class VectorDB(ABC):
@@ -331,11 +338,16 @@ class PostgresVectorAdapter(VectorDB):
             database: Database name
         """
         self.endpoint = endpoint
+        self.connection = None
+        if not _IDENTIFIER_RE.match(index_name):
+            raise ValueError(
+                f"Invalid table name {index_name!r}: must match "
+                f"{_IDENTIFIER_RE.pattern}"
+            )
         self.index_name = index_name
         self.username = username
         self.password = password
         self.database = database
-        self.connection = None
 
     def connect(self) -> None:
         """Connect to PostgreSQL."""
