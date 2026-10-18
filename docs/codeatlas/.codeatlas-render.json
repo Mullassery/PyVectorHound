@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "outputs": {
+    "md": [
+      "overview.md",
+      "pyvectorhound.3.md",
+      "tools.7.md"
+    ],
+    "html": [
+      "overview.html",
+      "pyvectorhound.3.html",
+      "tools.7.html"
+    ]
+  }
+}

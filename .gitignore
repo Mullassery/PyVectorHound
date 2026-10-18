@@ -148,4 +148,4 @@ Thumbs.db
 .env.local
 .env.*.local
 
-graphify-out/
+codeatlas-out/

@@ -62,6 +62,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Embedded architecture/knowledge-graph engine behind tools/codeatlas.
+architecture = ["codeatlas-rs>=0.3.0"]
 qdrant = ["qdrant-client>=1.7,<3"]
 chroma = ["chromadb>=0.4,<2"]
 milvus = ["pymilvus>=2.3,<3"]
