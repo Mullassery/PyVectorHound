@@ -2,6 +2,12 @@
 
 All notable changes to PyVectorHound are documented in this file.
 
+## [1.6.2] - 2026-10-18
+
+### Security
+- Lock down `_mcp_connector.py` DAB runtime config to loopback `127.0.0.1` (requiring `allow_remote=True` for `0.0.0.0`), localhost CORS origins instead of `*`, and `read`/`authenticated` entity permissions instead of `*`/`*` (RECHECK-001).
+- Default `PyvectorhoundServer` / `run_server` bind address to `127.0.0.1` instead of `0.0.0.0` (RECHECK-002).
+
 ## [1.6.1] - 2026-10-17
 
 ### Fixed

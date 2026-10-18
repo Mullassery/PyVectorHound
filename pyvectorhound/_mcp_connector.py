@@ -13,9 +13,25 @@ try:
     from statguardian._mcp_connector import BaseMCPConnector
 except ImportError:
     class BaseMCPConnector(ABC):
-        def __init__(self, project_name: str, port: int = 8765):
+        def __init__(
+            self,
+            project_name: str,
+            port: int = 8765,
+            host: str = "127.0.0.1",
+            allow_remote: bool = False,
+            allowed_origins: Optional[list[str]] = None,
+        ):
+            if host in ("0.0.0.0", "::") and not allow_remote:
+                raise ValueError(
+                    "Refusing to bind MCP connector to all interfaces without allow_remote=True"
+                )
             self.project_name = project_name
             self.port = port
+            self.host = host
+            self.allowed_origins = allowed_origins or [
+                f"http://127.0.0.1:{port}",
+                f"http://localhost:{port}",
+            ]
             self.dab_process: Optional[subprocess.Popen] = None
             self._ready = False
 
@@ -52,8 +68,18 @@ except ImportError:
 
         def _generate_dab_config(self, tools: Dict[str, Any]) -> Dict:
             return {
-                "runtime": {"host": "0.0.0.0", "port": self.port, "cors": {"origins": ["*"]}},
-                "entities": {k: {"source": k, "permissions": [{"actions": ["*"], "roles": ["*"]}]} for k in tools.keys()},
+                "runtime": {
+                    "host": self.host,
+                    "port": self.port,
+                    "cors": {"origins": list(self.allowed_origins)},
+                },
+                "entities": {
+                    k: {
+                        "source": k,
+                        "permissions": [{"actions": ["read"], "roles": ["authenticated"]}],
+                    }
+                    for k in tools.keys()
+                },
                 "rest": {"enabled": True, "path": "/api"},
                 "graphql": {"enabled": True, "path": "/graphql"},
                 "mcp": {"enabled": True, "path": "/mcp"},
