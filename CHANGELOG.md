@@ -2,6 +2,11 @@
 
 All notable changes to PyVectorHound are documented in this file.
 
+## [1.6.3] - 2026-10-18
+
+### Added
+- Failure-injection test coverage for the vector-DB boundary: embedding-dimension mismatch, NaN/Inf and zero-magnitude query vectors, backend errors (including a payload filter on an unindexed field) propagating instead of silently returning empty results, records with missing vectors being skipped, Chroma's missing-embedding fallback, and embedding-drift detection on a degraded vs stable metric (RECHECK-035).
+
 ## [1.6.2] - 2026-10-18
 
 ### Security
