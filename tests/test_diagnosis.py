@@ -148,9 +148,9 @@ class TestVectorSearchMRR:
         assert diagnosis.metrics()["vector_search"]["mrr"] == 0.0
 
 
-class TestUnimplementedComponentsReportHonestly:
-    """BM25 and reranker have no real scoring subsystem wired in -- they must say
-    so (UNKNOWN) instead of fabricating a "GOOD" verdict."""
+class TestUnmeasuredComponentsReportHonestly:
+    """BM25 and reranker have no bundled scoring subsystem -- without caller
+    inputs they must say UNKNOWN instead of fabricating a "GOOD" verdict."""
 
     def test_bm25_reports_unknown_not_fake_good(self):
         diagnosis = Diagnosis(query="test", results=[])
@@ -171,6 +171,94 @@ class TestUnimplementedComponentsReportHonestly:
         cause = diagnosis.root_cause()
 
         assert "BM25" not in cause
+
+
+class TestBM25Diagnostics:
+    """BM25 diagnostics measure an externally supplied keyword ranking."""
+
+    def test_measures_precision_recall_mrr_and_agreement(self):
+        diagnosis = Diagnosis(
+            query="test",
+            results=[{"id": "a", "score": 0.9}, {"id": "b", "score": 0.8}, {"id": "c", "score": 0.7}],
+            expected_docs=["a", "c"],
+            bm25_results=["a", "c", "x"],
+        )
+        diagnosis.analyze()
+        bm25 = diagnosis.metrics()["bm25"]
+
+        assert bm25["status"] == "MODERATE"
+        assert bm25["precision"] == pytest.approx(2 / 3)
+        assert bm25["recall"] == 1.0
+        assert bm25["mrr"] == 1.0
+        assert bm25["agreement"] == 0.5
+        assert bm25["measured"] is True
+
+    def test_derives_ranking_from_scores_when_results_absent(self):
+        diagnosis = Diagnosis(
+            query="test",
+            results=[{"id": "a", "score": 0.9}, {"id": "b", "score": 0.8}],
+            expected_docs=["b"],
+            bm25_scores={"a": 0.2, "b": 0.9},
+        )
+        diagnosis.analyze()
+        bm25 = diagnosis.metrics()["bm25"]
+
+        assert bm25["mrr"] == 1.0
+        assert bm25["precision"] == 0.5
+
+    def test_agreement_without_ground_truth_stays_unknown(self):
+        diagnosis = Diagnosis(
+            query="test",
+            results=[{"id": "a", "score": 0.9}, {"id": "b", "score": 0.8}],
+            bm25_results=["a", "b"],
+        )
+        diagnosis.analyze()
+        bm25 = diagnosis.metrics()["bm25"]
+
+        assert bm25["status"] == "UNKNOWN"
+        assert bm25["agreement"] == 1.0
+
+
+class TestRerankerDiagnostics:
+    """Reranker diagnostics measure NDCG and score separation."""
+
+    def test_perfect_ranking_scores_high(self):
+        diagnosis = Diagnosis(
+            query="test",
+            results=[{"id": "a", "score": 0.9}, {"id": "b", "score": 0.8}, {"id": "c", "score": 0.7}],
+            expected_docs=["a", "c"],
+            reranker_scores={"a": 0.9, "b": 0.1, "c": 0.8},
+        )
+        diagnosis.analyze()
+        reranker = diagnosis.metrics()["reranker"]
+
+        assert reranker["status"] == "GOOD"
+        assert reranker["ndcg"] == pytest.approx(1.0)
+        assert reranker["calibration"] > 0.9
+        assert reranker["measured"] is True
+
+    def test_inverted_ranking_scores_low(self):
+        diagnosis = Diagnosis(
+            query="test",
+            results=[{"id": "a", "score": 0.9}, {"id": "b", "score": 0.8}, {"id": "c", "score": 0.7}],
+            expected_docs=["a", "c"],
+            reranker_scores={"a": 0.1, "b": 0.9, "c": 0.2},
+        )
+        diagnosis.analyze()
+        reranker = diagnosis.metrics()["reranker"]
+
+        assert reranker["ndcg"] < 0.75
+        assert reranker["calibration"] < 0.1
+
+    def test_scores_without_ground_truth_stay_unknown(self):
+        diagnosis = Diagnosis(
+            query="test",
+            results=[{"id": "a", "score": 0.9}],
+            reranker_scores={"a": 0.9},
+        )
+        diagnosis.analyze()
+
+        assert diagnosis.metrics()["reranker"]["status"] == "UNKNOWN"
 
 
 class TestFaithfulnessAnalysis:

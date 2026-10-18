@@ -112,6 +112,9 @@ class Hound:
         expected_docs: Optional[List[str]] = None,
         verbose: bool = False,
         document_texts: Optional[Dict[str, str]] = None,
+        bm25_results: Optional[List[str]] = None,
+        bm25_scores: Optional[Dict[str, float]] = None,
+        reranker_scores: Optional[Dict[str, float]] = None,
     ) -> Diagnosis:
         """
         Diagnose why retrieval is failing for a specific query.
@@ -128,6 +131,14 @@ class Hound:
                 passed to `Hound()`, enables the faithfulness/contradiction
                 check (see `Diagnosis.__init__`). Adapters don't expose
                 document text, so this has to come from the caller.
+            bm25_results: Optional ranked document ids from an external
+                BM25/keyword search for this query. Enables keyword-search
+                precision/recall/MRR and vector-agreement diagnostics.
+            bm25_scores: Optional doc id -> BM25 score mapping, used when
+                `bm25_results` is not supplied.
+            reranker_scores: Optional doc id -> reranker score mapping for
+                the retrieved results. Enables NDCG and score-separation
+                calibration diagnostics.
 
         Returns:
             Diagnosis object with findings and recommendations
@@ -175,6 +186,9 @@ class Hound:
             trend_analyzer=self._trend_analyzer,
             document_texts=document_texts,
             llm_judge_fn=self.llm_judge_fn,
+            bm25_results=bm25_results,
+            bm25_scores=bm25_scores,
+            reranker_scores=reranker_scores,
         )
 
         # Analyze
@@ -189,6 +203,9 @@ class Hound:
         top_k: int = 5,
         expected_docs: Optional[List[Optional[List[str]]]] = None,
         document_texts: Optional[List[Optional[Dict[str, str]]]] = None,
+        bm25_results: Optional[List[Optional[List[str]]]] = None,
+        bm25_scores: Optional[List[Optional[Dict[str, float]]]] = None,
+        reranker_scores: Optional[List[Optional[Dict[str, float]]]] = None,
         max_workers: int = 8,
     ) -> List[Diagnosis]:
         """
@@ -219,6 +236,12 @@ class Hound:
             document_texts: Optional doc_id -> text mapping per query (same
                 length as `queries`, entries may be None) for the
                 faithfulness check.
+            bm25_results: Optional per-query BM25 rankings (same length as
+                `queries`, entries may be None).
+            bm25_scores: Optional per-query BM25 score maps (same length as
+                `queries`, entries may be None).
+            reranker_scores: Optional per-query reranker score maps (same
+                length as `queries`, entries may be None).
             max_workers: Maximum number of queries diagnosed concurrently.
 
         Returns:
@@ -238,10 +261,22 @@ class Hound:
         query_embeddings = query_embeddings or [None] * n
         expected_docs = expected_docs or [None] * n
         document_texts = document_texts or [None] * n
-        if not (len(query_embeddings) == len(expected_docs) == len(document_texts) == n):
+        bm25_results = bm25_results or [None] * n
+        bm25_scores = bm25_scores or [None] * n
+        reranker_scores = reranker_scores or [None] * n
+        if not (
+            len(query_embeddings)
+            == len(expected_docs)
+            == len(document_texts)
+            == len(bm25_results)
+            == len(bm25_scores)
+            == len(reranker_scores)
+            == n
+        ):
             raise ValueError(
-                "queries, query_embeddings, expected_docs, and document_texts must "
-                "all be the same length when provided."
+                "queries, query_embeddings, expected_docs, document_texts, "
+                "bm25_results, bm25_scores, and reranker_scores must all be the "
+                "same length when provided."
             )
 
         results: List[Optional[Diagnosis]] = [None] * n
@@ -256,6 +291,9 @@ class Hound:
                     top_k=top_k,
                     expected_docs=expected_docs[i],
                     document_texts=document_texts[i],
+                    bm25_results=bm25_results[i],
+                    bm25_scores=bm25_scores[i],
+                    reranker_scores=reranker_scores[i],
                 ): i
                 for i in range(n)
             }

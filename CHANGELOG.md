@@ -2,6 +2,18 @@
 
 All notable changes to PyVectorHound are documented in this file.
 
+## [1.7.0] - 2026-10-19
+
+### Added
+- BM25/keyword diagnostics: `Diagnosis`/`Hound.diagnose()` and `diagnose_batch()`
+  now accept `bm25_results` (ranked ids) or `bm25_scores` (id -> score) and
+  measure precision, recall, MRR, and top-k agreement with vector results
+  against `expected_docs`.
+- Reranker diagnostics: accept `reranker_scores` and measure NDCG@k plus a
+  score-separation calibration proxy against `expected_docs`.
+- Both components still report `UNKNOWN` when the caller supplies no
+  BM25/reranker input, rather than fabricating a verdict.
+
 ## [1.6.3] - 2026-10-18
 
 ### Added

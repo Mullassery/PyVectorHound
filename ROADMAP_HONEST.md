@@ -1,5 +1,7 @@
 # PyVectorHound: Honest Status & Roadmap
 
+> 2026-10-19 implementation findings: see [`AUDIT_FINDINGS.md`](AUDIT_FINDINGS.md).
+
 Last audited: 2026-09-20. This document states plainly what works, what's
 broken, what's untested, and what's simply not built. No hedging language
 ("planned", "may be added") is used for things that are just missing —
@@ -41,11 +43,14 @@ those are stated as missing.
 - **SIMD/GPU acceleration** for quantization or metrics: does not exist.
   Deliberately out of scope — needs separate hardware-specific design
   work, not an oversight.
-- **BM25 (keyword search) and reranker-calibration diagnostics**: not
-  implemented. `Diagnosis` reports `"UNKNOWN"` for these rather than a
-  fabricated number — this is honest, working-as-designed behavior, not a
-  bug. (Separate from `RetrievalRanker`'s ranking/diversification, which
-  *is* implemented — see above.)
+- **BM25 (keyword search) and reranker-calibration diagnostics**: the
+  **diagnostics** now accept externally supplied BM25 rankings/scores and
+  reranker scores (`bm25_results`, `bm25_scores`, `reranker_scores`) and
+  compute precision/recall/MRR/agreement and NDCG/score-separation against
+  `expected_docs`. PyVectorHound still does not ship a BM25 index or a
+  reranker model; without caller inputs both components report `UNKNOWN`.
+  (Separate from `RetrievalRanker`'s ranking/diversification, which *is*
+  implemented — see above.)
 - **A generated API reference** (`docs/API.md` or similar): does not
   exist. `docs/GUIDE.md` referenced it before this pass; the reference
   has been removed and replaced with a pointer to source docstrings.

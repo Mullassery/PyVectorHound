@@ -63,6 +63,9 @@ class Diagnosis:
         trend_analyzer: Optional[TrendAnalyzer] = None,
         document_texts: Optional[Dict[str, str]] = None,
         llm_judge_fn: Optional[Callable[[str, List[str]], Dict[str, Any]]] = None,
+        bm25_results: Optional[List[str]] = None,
+        bm25_scores: Optional[Dict[str, float]] = None,
+        reranker_scores: Optional[Dict[str, float]] = None,
     ):
         """
         Initialize Diagnosis.
@@ -94,6 +97,18 @@ class Diagnosis:
                 query, 1.0 = contradicts it) per call. PyVectorHound does
                 not bundle an LLM client, matching how `embed_fn` works on
                 `Hound`.
+            bm25_results: Optional ranked list of document ids from an
+                external BM25/keyword search for the same query. Used to
+                measure keyword-search precision/recall/MRR and its
+                agreement with the vector results. PyVectorHound does not
+                ship a BM25 index; this accepts the output of the keyword
+                system you already run.
+            bm25_scores: Optional document id -> BM25 score mapping. Used
+                only when `bm25_results` is not supplied; ranking is derived
+                by descending score.
+            reranker_scores: Optional document id -> reranker score mapping
+                for the retrieved results. Used to measure NDCG and score
+                separation (a calibration proxy) against `expected_docs`.
         """
         self.query = query
         self.results = results
@@ -103,6 +118,9 @@ class Diagnosis:
         self.trend_analyzer = trend_analyzer
         self.document_texts = document_texts
         self.llm_judge_fn = llm_judge_fn
+        self.bm25_results = list(bm25_results) if bm25_results is not None else None
+        self.bm25_scores = dict(bm25_scores) if bm25_scores is not None else None
+        self.reranker_scores = dict(reranker_scores) if reranker_scores is not None else None
         self._analysis = {}
 
     def analyze(self) -> None:
@@ -253,32 +271,195 @@ class Diagnosis:
                 return 1.0 / (i + 1)
         return 0.0
 
-    def _analyze_bm25(self) -> Dict[str, Any]:
-        """Analyze BM25 quality.
+    @staticmethod
+    def _ranking_from_scores(scores: Dict[str, float]) -> List[str]:
+        """Rank document ids by descending score, with a deterministic tie-break."""
+        return [
+            doc_id
+            for doc_id, _score in sorted(
+                scores.items(), key=lambda item: (-float(item[1]), str(item[0]))
+            )
+        ]
 
-        There is no keyword-search index or BM25 scoring subsystem wired into
-        this codebase, so this honestly reports UNKNOWN rather than a
-        fabricated score. Pass real BM25 precision/recall in to replace this
-        once that subsystem exists.
+    @staticmethod
+    def _ndcg_at_k(ranked_ids: List[str], relevant: set, k: int) -> float:
+        """Binary-relevance NDCG@k against a ground-truth set."""
+        if k <= 0 or not relevant:
+            return 0.0
+
+        def dcg(ids: List[str]) -> float:
+            total = 0.0
+            for index, doc_id in enumerate(ids[:k]):
+                if doc_id in relevant:
+                    total += 1.0 / np.log2(index + 2.0)
+            return total
+
+        ideal_hits = min(len(relevant), k)
+        ideal = sum(1.0 / np.log2(index + 2.0) for index in range(ideal_hits))
+        return dcg(ranked_ids) / ideal if ideal > 0 else 0.0
+
+    @staticmethod
+    def _calibration_separation(scores: Dict[str, float], relevant: set) -> float:
+        """Score-separation calibration proxy in [0, 1].
+
+        Reranker scores are min-max normalized across the retrieved documents,
+        then the mean score of relevant documents is compared with the mean
+        score of non-relevant documents. 0.5 means the scores do not separate
+        relevant from non-relevant documents at all; 1.0 means perfect
+        separation. This is a proxy, not a probability calibration curve --
+        it answers "does a higher reranker score actually mean more relevant?"
         """
+        values = list(scores.values())
+        if not values or not relevant:
+            return 0.0
+        low, high = min(values), max(values)
+        span = high - low
+        if span <= 0:
+            return 0.5
+
+        def normalized(doc_id: str) -> float:
+            return (float(scores[doc_id]) - low) / span
+
+        relevant_scores = [normalized(d) for d in scores if d in relevant]
+        non_relevant_scores = [normalized(d) for d in scores if d not in relevant]
+        if not relevant_scores or not non_relevant_scores:
+            return 0.5
+        mean_rel = sum(relevant_scores) / len(relevant_scores)
+        mean_non = sum(non_relevant_scores) / len(non_relevant_scores)
+        return max(0.0, min(1.0, (mean_rel - mean_non + 1.0) / 2.0))
+
+    def _analyze_bm25(self) -> Dict[str, Any]:
+        """Analyze keyword-search quality from externally supplied BM25 results.
+
+        PyVectorHound does not ship a BM25 index. Rather than fabricate a
+        score, this accepts the ranked output (or scores) of the keyword
+        system the caller already runs and measures its precision, recall,
+        MRR and agreement with the vector results. Without BM25 input it
+        still reports UNKNOWN.
+        """
+        ranking = self.bm25_results
+        if ranking is None and self.bm25_scores is not None:
+            ranking = self._ranking_from_scores(self.bm25_scores)
+
+        if ranking is None:
+            return {
+                "status": "UNKNOWN",
+                "precision": 0.0,
+                "recall": 0.0,
+                "mrr": 0.0,
+                "agreement": 0.0,
+                "k": len(self.results),
+                "explanation": (
+                    "BM25 was not measured. Pass bm25_results (ranked document ids) "
+                    "or bm25_scores (doc id -> score) from your keyword search to "
+                    "measure it; PyVectorHound does not ship a BM25 index."
+                ),
+            }
+
+        ranking = [str(doc_id) for doc_id in ranking]
+        k = len(self.results) or len(ranking)
+        top = ranking[:k]
+        retrieved_ids = [str(r["id"]) for r in self.results]
+        agreement = 0.0
+        if top and retrieved_ids:
+            a, b = set(top), set(retrieved_ids)
+            agreement = len(a & b) / len(a | b) if (a | b) else 0.0
+
+        if not self.expected_docs:
+            return {
+                "status": "UNKNOWN",
+                "precision": 0.0,
+                "recall": 0.0,
+                "mrr": 0.0,
+                "agreement": agreement,
+                "k": k,
+                "explanation": (
+                    f"BM25 ranking received, but no expected_docs were supplied, so "
+                    f"precision/recall cannot be measured. Top-{k} agreement with "
+                    f"the vector results: {agreement:.1%}."
+                ),
+            }
+
+        relevant = {str(doc_id) for doc_id in self.expected_docs}
+        hits = len(relevant & set(top))
+        precision = hits / len(top) if top else 0.0
+        recall = hits / len(relevant) if relevant else 0.0
+        mrr = self._compute_mrr(ranking, relevant)
+        status = self._classify(
+            metric_name="bm25_precision",
+            value=precision,
+            fixed_good=0.8,
+            fixed_moderate=0.5,
+        )
         return {
-            "status": "UNKNOWN",
-            "precision": 0.0,
-            "recall": 0.0,
-            "explanation": "BM25 keyword search is not implemented in this version; not measured.",
+            "status": status,
+            "precision": precision,
+            "recall": recall,
+            "mrr": mrr,
+            "agreement": agreement,
+            "k": k,
+            "measured": True,
+            "explanation": (
+                f"Measured from an external BM25 ranking over {len(ranking)} documents: "
+                f"precision {precision:.1%}, recall {recall:.1%}, MRR {mrr:.2f}, "
+                f"top-{k} agreement with vector results {agreement:.1%}."
+            ),
         }
 
     def _analyze_reranker(self) -> Dict[str, Any]:
-        """Analyze reranker quality.
+        """Analyze reranker quality from externally supplied scores.
 
-        No reranker score input exists on this Diagnosis (see __init__), so
-        this honestly reports UNKNOWN rather than a fabricated score.
+        Measures NDCG@k and a score-separation calibration proxy against
+        `expected_docs`. Without reranker scores (or ground truth) it reports
+        UNKNOWN instead of inventing a verdict.
         """
+        if self.reranker_scores is None:
+            return {
+                "status": "UNKNOWN",
+                "calibration": 0.0,
+                "ndcg": 0.0,
+                "k": 0,
+                "explanation": (
+                    "Reranker quality was not measured. Pass reranker_scores "
+                    "(doc id -> score) for the retrieved results to measure it."
+                ),
+            }
+
+        scores = {str(doc_id): float(score) for doc_id, score in self.reranker_scores.items()}
+        ranked = self._ranking_from_scores(scores)
+        k = len(self.results) or len(ranked)
+
+        if not self.expected_docs:
+            return {
+                "status": "UNKNOWN",
+                "calibration": 0.0,
+                "ndcg": 0.0,
+                "k": k,
+                "explanation": (
+                    "Reranker scores received, but no expected_docs were supplied, "
+                    "so NDCG/calibration cannot be measured."
+                ),
+            }
+
+        relevant = {str(doc_id) for doc_id in self.expected_docs}
+        ndcg = self._ndcg_at_k(ranked, relevant, k)
+        calibration = self._calibration_separation(scores, relevant)
+        status = self._classify(
+            metric_name="reranker_ndcg",
+            value=ndcg,
+            fixed_good=0.8,
+            fixed_moderate=0.5,
+        )
         return {
-            "status": "UNKNOWN",
-            "calibration": 0.0,
-            "ndcg": 0.0,
-            "explanation": "No reranker scores were provided; reranker quality not measured.",
+            "status": status,
+            "calibration": calibration,
+            "ndcg": ndcg,
+            "k": k,
+            "measured": True,
+            "explanation": (
+                f"Measured from {len(scores)} reranker scores: NDCG@{k} {ndcg:.2f}, "
+                f"score separation {calibration:.1%} (0.5 = no separation, 1.0 = perfect)."
+            ),
         }
 
     def _analyze_faithfulness(self) -> Dict[str, Any]:
@@ -392,7 +573,7 @@ BM25 (KEYWORD): {self._analysis.get("bm25", {}).get("status", "UNKNOWN")}
 
 RERANKER: {self._analysis.get("reranker", {}).get("status", "UNKNOWN")}
   Calibration: {self._analysis.get("reranker", {}).get("calibration", 0.0):.1%}
-  NDCG@5: {self._analysis.get("reranker", {}).get("ndcg", 0.0):.2f}
+  NDCG@{self._analysis.get("reranker", {}).get("k", 5)}: {self._analysis.get("reranker", {}).get("ndcg", 0.0):.2f}
 
 FAITHFULNESS (LLM JUDGE): {self._analysis.get("faithfulness", {}).get("status", "UNKNOWN")}
   Contradiction score: {self._analysis.get("faithfulness", {}).get("contradiction_score", 0.0):.1%} (lower is better)

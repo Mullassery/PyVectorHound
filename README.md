@@ -51,6 +51,11 @@ you already have and tells you, with real computed metrics, what's wrong.
 - **LLM-as-judge faithfulness / contradiction checking** — pass `document_texts` and an
   `llm_judge_fn` (no LLM client bundled) and `Diagnosis` flags retrieved documents that
   score well on embedding similarity but are actually irrelevant to or contradict the query.
+- **BM25/keyword diagnostics** — pass the ranked output (or scores) of the keyword
+  search you already run and PyVectorHound measures its precision, recall, MRR, and
+  top-k agreement with your vector results. It does not ship a BM25 index.
+- **Reranker diagnostics** — pass `reranker_scores` for the retrieved results and get
+  NDCG@k plus a score-separation calibration proxy against your ground truth.
 - **Root cause + ranked recommendations** in plain English, combining the above.
 - **Concurrent batch evaluation** via `Hound.diagnose_batch()`, with automatic
   retry/backoff on `embed_fn`/`llm_judge_fn` calls.
@@ -80,9 +85,10 @@ you already have and tells you, with real computed metrics, what's wrong.
 - **Not an embedding model, reranker, or vector database.** It brings none of those, and
   won't silently generate a random vector and pretend the resulting diagnosis means
   something: pass an `embed_fn` or a precomputed `query_embedding`.
-- **Not a BM25/keyword-search or reranker diagnostic.** Both components report `UNKNOWN` —
-  not implemented, not guessed — because `Diagnosis` doesn't yet accept external
-  BM25/reranker scores.
+- **Not a BM25 index or reranker model.** It does not compute keyword search or rerank
+  documents itself. It can, however, diagnose an external BM25 ranking and external
+  reranker scores when you pass them in; without those inputs both components still
+  report `UNKNOWN` rather than inventing a verdict.
 - **Not a full retrieve-then-generate evaluator.** Unlike Ragas, PyVectorHound never
   requires an LLM to generate a final answer, so it has no visibility into a
   generation-layer failure.
@@ -91,6 +97,12 @@ you already have and tells you, with real computed metrics, what's wrong.
 - **Some methods remain unimplemented:** `Hound.compare_metrics()` and `Hound.detect_drift()`
   raise `NotImplementedError`; `ModelComparison`/`Hound.compare_models()` reports real
   published cost/latency metadata but cannot measure quality unless you pass `quality_fn`.
+
+## Audit findings
+
+The 2026-10-19 implementation audit — including the BM25/reranker diagnostics
+work, verification results, and remaining gaps — is recorded in
+[`AUDIT_FINDINGS.md`](AUDIT_FINDINGS.md).
 
 ## Project status
 
@@ -203,11 +215,32 @@ print(diagnosis.hunt())
 | **Embedding** | Isotropy, coverage, distinctiveness of the retrieved documents' real embeddings | An `adapter` with `get_embeddings()`, and ≥2 retrieved documents |
 | **Vector search** | Precision, recall, MRR | `expected_docs` (ground truth) |
 | **Faithfulness** | LLM-judge contradiction/relevance check | `document_texts` + `llm_judge_fn` |
-| **BM25 (keyword)** | Not implemented — reports `UNKNOWN` | n/a |
-| **Reranker** | Not implemented — reports `UNKNOWN` | n/a |
+| **BM25 (keyword)** | Precision, recall, MRR, and top-k agreement with vector results from an external keyword ranking | `bm25_results` (ranked ids) or `bm25_scores` (id → score), plus `expected_docs` for precision/recall |
+| **Reranker** | NDCG@k and a score-separation calibration proxy | `reranker_scores` (id → score), plus `expected_docs` |
 
 Every measured component is computed for real from the input you give it; nothing is guessed
 when the input isn't there.
+
+### BM25 and reranker diagnostics
+
+PyVectorHound does not run keyword search or reranking for you. If your pipeline already
+does either, pass its output to `diagnose()` so the diagnosis covers that stage too:
+
+```python
+diagnosis = hound.diagnose(
+    query="return policy for opened items",
+    expected_docs=["returns.pdf", "policy.md"],
+    # From your keyword search (BM25, Postgres FTS, Elasticsearch, etc.):
+    bm25_results=["returns.pdf", "shipping.md", "policy.md"],
+    # From your reranker:
+    reranker_scores={"returns.pdf": 0.91, "shipping.md": 0.22, "policy.md": 0.83},
+)
+print(diagnosis.metrics()["bm25"])
+print(diagnosis.metrics()["reranker"])
+```
+
+Without `expected_docs`, the components still report UNKNOWN for quality but BM25
+agreement with the vector results is reported.
 
 ### Faithfulness checking and batch evaluation
 
