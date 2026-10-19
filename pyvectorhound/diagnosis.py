@@ -592,6 +592,18 @@ RECOMMENDATIONS
         report += "\n"
         return report
 
+    def to_html(self, path: Optional[str] = None) -> str:
+        """Render a self-contained HTML report (optionally write it)."""
+        from pyvectorhound.report import render_html, write_html
+
+        return write_html(self, path) if path else render_html(self)
+
+    def to_json(self, path: Optional[str] = None) -> str:
+        """Render a JSON report (optionally write it)."""
+        from pyvectorhound.report import write_json
+
+        return write_json(self, path)
+
     def metrics(self) -> Dict[str, Any]:
         """
         Get detailed metrics for the diagnosis.

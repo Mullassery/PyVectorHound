@@ -2,6 +2,14 @@
 
 All notable changes to PyVectorHound are documented in this file.
 
+## [1.8.0] - 2026-10-19
+
+### Added
+- `Diagnosis.to_html(path?)` / `to_json(path?)` and
+  `pyvectorhound report <hound> <query> <out.html>`: self-contained, escaped
+  HTML diagnosis reports for sharing/CI artifacts.
+- `tests/test_report.py` covers escaping, metrics/recommendations, and file output.
+
 ## [1.7.0] - 2026-10-19
 
 ### Added

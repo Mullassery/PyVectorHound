@@ -57,6 +57,9 @@ you already have and tells you, with real computed metrics, what's wrong.
 - **Reranker diagnostics** — pass `reranker_scores` for the retrieved results and get
   NDCG@k plus a score-separation calibration proxy against your ground truth.
 - **Root cause + ranked recommendations** in plain English, combining the above.
+- **Shareable reports** — `Diagnosis.to_html()` / `to_json()` and
+  `pyvectorhound report <hound> <query> out.html` produce escaped, standalone
+  reports for PRs or CI artifacts.
 - **Concurrent batch evaluation** via `Hound.diagnose_batch()`, with automatic
   retry/backoff on `embed_fn`/`llm_judge_fn` calls.
 - **Model-agnostic quality thresholds** — `Hound.track_metric()` switches GOOD/MODERATE/WEAK

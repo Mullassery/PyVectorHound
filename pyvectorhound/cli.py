@@ -250,6 +250,21 @@ def main():
             result = cli.get_recommendations(hound_id, query, top_k)
             print(json.dumps(result))
 
+        elif command == "report":
+            if len(sys.argv) < 5:
+                print(json.dumps({"error": "Usage: report <hound_id> <query> <output.html> [top_k]"}))
+                sys.exit(1)
+            hound_id = sys.argv[2]
+            query = sys.argv[3]
+            output_path = sys.argv[4]
+            top_k = int(sys.argv[5]) if len(sys.argv) > 5 else 5
+            if hound_id not in cli.hounds:
+                print(json.dumps({"error": f"Hound '{hound_id}' not found"}))
+                sys.exit(1)
+            diagnosis = cli.hounds[hound_id].diagnose(query=query, top_k=top_k)
+            path = diagnosis.to_html(output_path)
+            print(json.dumps({"status": "success", "path": path}))
+
         elif command == "list":
             result = cli.list_hounds()
             print(json.dumps(result))
@@ -297,6 +312,9 @@ COMMANDS:
         Example:
             pyvectorhound diagnose hound1 "quantum computing" 10
             pyvectorhound diagnose hound1 "machine learning" 5 doc1,doc2,doc3
+
+    report <hound_id> <query> <output.html> [top_k]
+        Diagnose a query and write a self-contained HTML report
 
     recommendations <hound_id> <query> [top_k]
         Get actionable recommendations to fix retrieval
