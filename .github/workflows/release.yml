@@ -1,0 +1,221 @@
+name: Release
+
+# Build wheels for every supported platform/interpreter and publish to PyPI.
+#
+# - `workflow_dispatch` builds artifacts only (no publish) for inspection.
+# - Pushing a `v*` tag publishes via PyPI Trusted Publishing (OIDC, no secrets).
+#
+# Wheels are built (not abi3, the numpy-backed extension is version-specific)
+# for CPython 3.9-3.12 on Linux x86_64/aarch64, macOS arm64/x86_64 and
+# Windows x86_64. Every wheel is imported from a clean install before it is
+# uploaded, and the publish job refuses to publish an incomplete set.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  wheels:
+    name: Wheel ${{ matrix.platform.name }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.platform.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - name: linux-x86_64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            manylinux: "2_17"
+          - name: linux-aarch64
+            os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            manylinux: "2_17"
+          - name: macos-arm64
+            os: macos-latest
+            target: aarch64-apple-darwin
+          - name: macos-x86_64
+            os: macos-15-intel
+            target: x86_64-apple-darwin
+          - name: windows-x86_64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      # The manylinux container supplies the interpreters on Linux; macOS and
+      # Windows build on the host with the setup-python interpreter.
+      - if: runner.os != 'Linux'
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Build wheel (Linux)
+        if: runner.os == 'Linux'
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.platform.target }}
+          manylinux: ${{ matrix.platform.manylinux }}
+          args: --release --locked --out dist -i python${{ matrix.python-version }}
+
+      - name: Build wheel (macOS / Windows)
+        if: runner.os != 'Linux'
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.platform.target }}
+          args: --release --locked --out dist -i python
+
+      - name: Verify one wheel was produced
+        shell: bash
+        run: |
+          ls -l dist
+          test "$(find dist -maxdepth 1 -name '*.whl' | wc -l)" -eq 1
+
+      # Install and import the wheel in a *clean* interpreter, from outside the
+      # source tree so the installed wheel is what gets imported.
+      - name: Wheel import smoke (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          docker run --rm -v "$PWD/dist:/dist:ro" python:${{ matrix.python-version }}-slim sh -c '
+            python -m pip install --no-cache-dir /dist/*.whl &&
+            python -c "import pyvectorhound; from pyvectorhound import _core; from pyvectorhound.cli import main as cli_main; print(pyvectorhound.__version__)"'
+
+      - name: Wheel import smoke (macOS / Windows)
+        if: runner.os != 'Linux'
+        shell: bash
+        run: |
+          python -m pip install --no-cache-dir --force-reinstall dist/*.whl
+          cd "$RUNNER_TEMP"
+          python -c "import pyvectorhound; from pyvectorhound import _core; from pyvectorhound.cli import main as cli_main; print(pyvectorhound.__version__)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.platform.name }}-cp${{ matrix.python-version }}
+          path: dist/*.whl
+          if-no-files-found: error
+
+  sdist:
+    name: Build sdist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build sdist
+        uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --out dist
+
+      - name: Verify an sdist was produced
+        shell: bash
+        run: |
+          ls -l dist
+          test "$(find dist -maxdepth 1 -name '*.tar.gz' | wc -l)" -eq 1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  smoke-sdist:
+    name: sdist install smoke
+    needs: sdist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/download-artifact@v4
+        with:
+          name: sdist
+          path: dist
+      - name: Install sdist and import it
+        shell: bash
+        run: |
+          ls -l dist
+          python -m pip install --no-cache-dir dist/*.tar.gz
+          cd "$RUNNER_TEMP"
+          python -c "import pyvectorhound; from pyvectorhound import _core; print(pyvectorhound.__version__)"
+
+  publish:
+    name: Publish to PyPI
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [wheels, sdist, smoke-sdist]
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # merge-multiple puts every artifact into one flat dist/ directory.
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Verify the complete artifact set
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os
+          import pathlib
+          import re
+          import tomllib
+
+          project = pathlib.Path("pyproject.toml").read_text()
+          py_version = tomllib.loads(project)["project"]["version"]
+          cargo = pathlib.Path("Cargo.toml").read_text()
+          cargo_version = re.search(r'(?m)^version\s*=\s*"([^"]+)"', cargo).group(1)
+          tag = os.environ["GITHUB_REF_NAME"]
+          assert tag == f"v{py_version}", f"tag {tag} does not match pyproject version {py_version}"
+          assert py_version == cargo_version, (
+              f"pyproject version {py_version} does not match Cargo.toml version {cargo_version}"
+          )
+
+          names = sorted(p.name for p in pathlib.Path("dist").iterdir())
+          print("\n".join(names))
+
+          wheels = [n for n in names if n.endswith(".whl")]
+          sdists = [n for n in names if n.endswith(".tar.gz")]
+          assert len(sdists) == 1, f"expected 1 sdist, got {sdists}"
+          assert len(wheels) == 20, f"expected 20 wheels, got {len(wheels)}: {wheels}"
+          assert all(n.startswith(f"pyvectorhound-{py_version}-") for n in wheels), (
+              f"wheel names do not match version {py_version}: {wheels}"
+          )
+          for minor in ("39", "310", "311", "312"):
+              assert any(f"-cp{minor}-cp{minor}-" in n for n in wheels), (
+                  f"missing CPython {minor} wheels: {wheels}"
+              )
+
+          platforms = {
+              "Linux x86_64 (glibc)": lambda w: "manylinux" in w and "x86_64" in w,
+              "Linux aarch64 (glibc)": lambda w: "manylinux" in w and "aarch64" in w,
+              "macOS arm64": lambda w: "macosx" in w and "arm64" in w,
+              "macOS x86_64": lambda w: "macosx" in w and "x86_64" in w,
+              "Windows x86_64": lambda w: "win_amd64" in w,
+          }
+          missing = [name for name, match in platforms.items() if not any(match(w) for w in wheels)]
+          assert not missing, f"missing platform wheels: {missing}"
+          PY
+
+      - name: Publish distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist
+          print-hash: true
