@@ -4,7 +4,7 @@
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![PyPI](https://img.shields.io/pypi/v/pyvectorhound)](https://pypi.org/project/pyvectorhound/)
-[![Python 3.8+](https://img.shields.io/badge/Python-3.8%2B-blue)](https://www.python.org)
+[![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-blue)](https://www.python.org)
 [![Tests](https://github.com/Mullassery/PyVectorHound/actions/workflows/ci.yml/badge.svg)](https://github.com/Mullassery/PyVectorHound/actions/workflows/ci.yml)
 [![Graphify](https://img.shields.io/badge/Graphify-knowledge%20graph-blue)](https://github.com/Graphify-Labs/graphify)
 
@@ -117,7 +117,7 @@ work, verification results, and remaining gaps — is recorded in
 
 ## Project status
 
-**Production/Stable** per the package classifier (version 1.6.0), with the honest gaps
+**Production/Stable** per the package classifier (version 1.8.0), with the honest gaps
 above. If a component doesn't have enough input to measure honestly (no `adapter`, fewer
 than 2 documents with embeddings, or no `expected_docs`), it's reported as `UNKNOWN` with an
 explanation of what to supply — never a made-up number. See
@@ -149,13 +149,27 @@ and Ragas is absent.
 pip install pyvectorhound[ragas]
 ```
 
-Requires Python 3.8+. PyPI currently carries a macOS ARM64 / CPython 3.9 wheel only (no
-sdist and no `abi3` build for 1.6.0), so on other platforms or interpreter versions,
-install straight from the repo instead (a Rust toolchain is required):
+Requires Python 3.9+. The `pyvectorhound._core` extension is built per
+interpreter (it is not `abi3`), so wheels are published for each supported
+Python version.
 
-```bash
-pip install git+https://github.com/Mullassery/PyVectorHound.git
-```
+**Supported wheel targets** (built by `.github/workflows/release.yml`):
+
+| OS | Architectures | CPython |
+| --- | --- | --- |
+| Linux (glibc, manylinux_2_17) | x86_64, aarch64 | 3.9, 3.10, 3.11, 3.12 |
+| macOS | arm64, x86_64 | 3.9, 3.10, 3.11, 3.12 |
+| Windows | x86_64 | 3.9, 3.10, 3.11, 3.12 |
+
+> **Current PyPI state:** 1.8.0 predates this release workflow and only ships an
+> sdist plus a CPython 3.12 macOS arm64 wheel. Wheels for the other targets are
+> produced and smoke-tested by the release workflow, but they only reach PyPI
+> when the next `v*` tag is released. Until then, install from source (a Rust
+> toolchain is required) on unsupported targets:
+>
+> ```bash
+> pip install git+https://github.com/Mullassery/PyVectorHound.git
+> ```
 
 ## Quick start
 

@@ -222,14 +222,12 @@ those are stated as missing.
    fact-checked line-by-line (that's a dedicated-session-sized task given
    its length).
 
-10. **Python 3.8 support is claimed but never tested.**
-    `pyproject.toml`: `requires-python = ">=3.8"` and a `Python :: 3.8`
-    classifier, but `.github/workflows/ci.yml`'s test matrix is `["3.9",
-    "3.10", "3.11", "3.12"]` — 3.8 has never run in CI. Given
-    `python-frontmatter` was already capped below 1.2.0 specifically "to
-    restore Python 3.9 support" (see CHANGELOG 1.x history), 3.8 support
-    should be considered unverified, not guaranteed, until it's actually
-    added to the CI matrix or the floor is honestly raised to 3.9.
+10. ~~**Python 3.8 support is claimed but never tested.**~~ **Resolved
+    (2026-10-20):** the declared floor is now `requires-python = ">=3.9"`
+    (classifier, mypy, black and ruff targets updated to match). CI tests
+    3.9-3.12 and the release workflow builds wheels for 3.9-3.12. 3.8 was
+    never tested, is end-of-life, and the package uses PEP 585 builtin
+    generics at runtime, so claiming it was incorrect.
 
 ### Small things fixed in this pass (see CHANGELOG.md `[Unreleased]`)
 

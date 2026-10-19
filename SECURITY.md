@@ -21,10 +21,10 @@ Include:
 - No SOC 2 / HIPAA / GDPR / PCI DSS / ISO 27001 certification, and none is
   planned. If your use case requires one of these, PyVectorHound does not
   meet it.
-- Supported Python: CI (`.github/workflows/ci.yml`) tests 3.9, 3.10, 3.11,
-  3.12. `pyproject.toml` declares `requires-python = ">=3.8"` and lists a
-  `Python :: 3.8` classifier, but 3.8 is never actually tested in CI —
-  treat 3.8 support as unverified, not guaranteed.
+- Supported Python: 3.9, 3.10, 3.11, 3.12. CI tests all four versions and
+  `pyproject.toml` declares `requires-python = ">=3.9"`. Python 3.8 is not
+  supported (end-of-life, never tested; the floor was corrected from the
+  previously declared `>=3.8`).
 - Rust toolchain: pinned to 1.97 via `rust-toolchain.toml`.
 
 ## Known dependency vulnerabilities (found via `pip-audit`, 2026-09-20)

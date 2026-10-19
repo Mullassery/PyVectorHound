@@ -5,6 +5,15 @@ All notable changes to PyVectorHound are documented in this file.
 ## [Unreleased]
 
 ### Added
+- Release workflow (`.github/workflows/release.yml`) using `maturin-action`:
+  Linux x86_64/aarch64 (manylinux_2_17), macOS arm64/x86_64, and Windows
+  x86_64 wheels for CPython 3.9-3.12, plus an sdist, published via PyPI
+  Trusted Publishing. Every wheel and the sdist are installed into a clean
+  interpreter and imported (`pyvectorhound`, `pyvectorhound._core`) before
+  upload; the publish job refuses an incomplete artifact set.
+- CI wheel job: builds a wheel on CPython 3.9 and 3.12, installs it outside
+  the source tree, and imports it, so the packaged artifact is tested and not
+  only the editable install.
 - Opt-in int8 quantization wired into `Hound`: `Hound(..., quantized=True)` /
   `hound.enable_quantization()`, with `add_vectors()`, `search_vectors()`,
   `get_stored_embeddings()`, and `clear_stored_vectors()`. The in-process store
@@ -18,6 +27,14 @@ All notable changes to PyVectorHound are documented in this file.
   periods have no samples.
 - `Hound.track_metric()` accepts an optional explicit `timestamp`, enabling
   named historical comparisons.
+
+### Changed
+- Python floor raised from 3.8 to 3.9 (`requires-python`, classifiers, mypy,
+  black and ruff targets). 3.8 was declared but never tested, is end-of-life,
+  and the package uses PEP 585 builtin generics at runtime. README,
+  `CONTRIBUTING.md`, `SECURITY.md`, and `DEPLOYMENT.md` now state 3.9+.
+- CI workflow pinned to existing action majors (`actions/checkout@v4`,
+  `actions/setup-python@v5`); it previously referenced `@v7` labels.
 
 ## [1.8.0] - 2026-10-19
 

@@ -5,7 +5,7 @@ Thank you for considering contributing to PyVectorHound! We welcome contribution
 ## Getting Started
 
 ### Prerequisites
-- Python 3.9+ (the package declares `>=3.8` in `pyproject.toml`, but CI only tests 3.9-3.12 — 3.8 is unverified, see ROADMAP_HONEST.md)
+- Python 3.9+ (declared in `pyproject.toml` and tested in CI for 3.9-3.12)
 - Rust 1.97 (pinned in `rust-toolchain.toml`)
 - pip or uv
 
