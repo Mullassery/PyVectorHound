@@ -209,6 +209,28 @@ print(diagnosis.hunt())
 `Hound` connects lazily — constructing it doesn't require a live server, only calling
 `diagnose()` (or another querying method) does.
 
+## Synthetic evaluation sets (Ragas interop)
+
+Convert Ragas-style generated questions into PyVectorHound's query +
+expected-doc inputs:
+
+```bash
+pip install "pyvectorhound[ragas]"
+```
+
+```python
+from pyvectorhound.synthetic import from_ragas_rows, to_hound_batch
+
+cases = from_ragas_rows(ragas_rows)  # user_input/reference/reference_contexts
+queries, expected_docs = to_hound_batch(cases)
+diagnoses = hound.diagnose_batch(queries, expected_docs=expected_docs)
+```
+
+`generate_testset(documents, generator=...)` accepts a caller-supplied
+generator because Ragas's generation API changes across versions and needs an
+LLM. Nothing is invented: rows without a query are skipped and missing
+documents produce empty expected sets.
+
 ## Usage
 
 ### Diagnostics it runs

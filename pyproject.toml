@@ -62,6 +62,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+ragas = ["ragas>=0.2"]
 qdrant = ["qdrant-client>=1.7,<3"]
 chroma = ["chromadb>=0.4,<2"]
 milvus = ["pymilvus>=2.3,<3"]

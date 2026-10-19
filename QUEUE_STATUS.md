@@ -4,12 +4,13 @@ This file records what was shipped, what is blocked/failed, and what is rejected
 
 ## Shipped
 - BM25/reranker diagnostics and HTML/JSON reports (1.8.0).
+- Ragas-style test-set interop via `pyvectorhound.synthetic` (caller-supplied generation).
 
 ## Blocked / failed
 - Verified adapter coverage tests for LlamaIndex/LangChain/pgvector.
 
 ## Rejected / deferred
-- Generation-layer evaluation/UI — Ragas/Phoenix own it.
+- Bundled LLM test-set generation and generation-layer evaluation/UI — Ragas/Phoenix own it; the interop adapter accepts caller-provided generators.
 
 ## Policy
 

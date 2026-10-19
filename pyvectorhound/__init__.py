@@ -24,7 +24,6 @@ Attributes:
     __license__ (str): License type (Apache-2.0)
 """
 
-import logging
 from importlib.metadata import PackageNotFoundError, version
 from typing import Final
 
@@ -43,84 +42,96 @@ __email__: Final[str] = "mullassery@gmail.com"
 __license__: Final[str] = "Apache-2.0"
 
 try:
-    from pyvectorhound.hound import Hound
-    from pyvectorhound.diagnosis import Diagnosis
-    from pyvectorhound.comparison import ModelComparison
-    from pyvectorhound.scorer import QualityScorer
+    from pyvectorhound._mcp_connector import VectorRetrieval
     from pyvectorhound.benchmarking import (
-        PerformanceBenchmark,
+        EmbeddingComparison,
         LatencyMetrics,
+        PerformanceBenchmark,
         PerformanceSnapshot,
         StorageMetrics,
-        EmbeddingComparison,
     )
-    from pyvectorhound.trend_analysis import (
-        TrendAnalyzer,
-        TimeSeries,
-        DriftAnalysis,
-        RegressionAnalysis,
-        AnomalyDetection,
-    )
-    from pyvectorhound.retrieval_tracing import (
-        RetrievalTracer,
-        RetrievalTrace,
-        TracePhase,
-        SearchResult,
-        PhaseMetrics,
+    from pyvectorhound.comparison import ModelComparison
+    from pyvectorhound.diagnosis import Diagnosis
+    from pyvectorhound.hound import Hound
+    from pyvectorhound.ranking import compute_reranker_metrics, rank_and_diversify
+    from pyvectorhound.recommendations import (
+        DiagnosticReport,
+        FailureCategory,
+        FixRecommendation,
+        RecommendationEngine,
     )
     from pyvectorhound.retrieval_replay import (
-        RetrievalReplayer,
+        ComponentType,
+        ReplayComparison,
         ReplayConfiguration,
         ReplayResult,
-        ReplayComparison,
-        ComponentType,
+        RetrievalReplayer,
     )
-    from pyvectorhound.recommendations import (
-        RecommendationEngine,
-        DiagnosticReport,
-        FixRecommendation,
-        FailureCategory,
+    from pyvectorhound.retrieval_tracing import (
+        PhaseMetrics,
+        RetrievalTrace,
+        RetrievalTracer,
+        SearchResult,
+        TracePhase,
     )
-    from pyvectorhound.ranking import rank_and_diversify, compute_reranker_metrics
+    from pyvectorhound.scorer import QualityScorer
+    from pyvectorhound.synthetic import (
+        EvalCase,
+        RagasUnavailable,
+        from_ragas_rows,
+        generate_testset,
+        to_hound_batch,
+    )
+    from pyvectorhound.trend_analysis import (
+        AnomalyDetection,
+        DriftAnalysis,
+        RegressionAnalysis,
+        TimeSeries,
+        TrendAnalyzer,
+    )
+
     logger.debug("Successfully imported core modules")
 except ImportError as e:
     logger.error(f"Failed to import core modules: {e}")
     raise
 
 __all__: Final[list[str]] = [
-    "Hound",
-    "Diagnosis",
-    "ModelComparison",
-    "QualityScorer",
-    "PerformanceBenchmark",
-    "LatencyMetrics",
-    "PerformanceSnapshot",
-    "StorageMetrics",
-    "EmbeddingComparison",
-    "TrendAnalyzer",
-    "TimeSeries",
-    "DriftAnalysis",
-    "RegressionAnalysis",
     "AnomalyDetection",
-    "RetrievalTracer",
-    "RetrievalTrace",
-    "TracePhase",
-    "SearchResult",
+    "ComponentType",
+    "Diagnosis",
+    "DiagnosticReport",
+    "DriftAnalysis",
+    "EmbeddingComparison",
+    "EvalCase",
+    "FailureCategory",
+    "FixRecommendation",
+    "Hound",
+    "LatencyMetrics",
+    "ModelComparison",
+    "PerformanceBenchmark",
+    "PerformanceSnapshot",
     "PhaseMetrics",
-    "RetrievalReplayer",
+    "QualityScorer",
+    "RagasUnavailable",
+    "RecommendationEngine",
+    "RegressionAnalysis",
+    "ReplayComparison",
     "ReplayConfiguration",
     "ReplayResult",
-    "ReplayComparison",
-    "ComponentType",
-    "RecommendationEngine",
-    "DiagnosticReport",
-    "FixRecommendation",
-    "FailureCategory",
-    "rank_and_diversify",
+    "RetrievalReplayer",
+    "RetrievalTrace",
+    "RetrievalTracer",
+    "SearchResult",
+    "StorageMetrics",
+    "TimeSeries",
+    "TracePhase",
+    "TrendAnalyzer",
+    "VectorRetrieval",
     "compute_reranker_metrics",
+    "from_ragas_rows",
+    "generate_testset",
+    "rank_and_diversify",
+    "to_hound_batch",
 ]
 
 logger.info(f"Pyvectorhound {__version__} initialized successfully")
-
-# MCP 2.0 Support
-from pyvectorhound._mcp_connector import VectorRetrieval
