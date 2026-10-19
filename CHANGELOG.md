@@ -33,8 +33,9 @@ All notable changes to PyVectorHound are documented in this file.
   black and ruff targets). 3.8 was declared but never tested, is end-of-life,
   and the package uses PEP 585 builtin generics at runtime. README,
   `CONTRIBUTING.md`, `SECURITY.md`, and `DEPLOYMENT.md` now state 3.9+.
-- CI workflow pinned to existing action majors (`actions/checkout@v4`,
-  `actions/setup-python@v5`); it previously referenced `@v7` labels.
+- CI uses the same action majors as the release workflow
+  (`actions/checkout@v4`, `actions/setup-python@v5`) and adds a wheel build
+  + import smoke job.
 
 ## [1.8.0] - 2026-10-19
 
