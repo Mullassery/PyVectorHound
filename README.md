@@ -132,6 +132,15 @@ pip install pyvectorhound[weaviate]   # Weaviate
 pip install pyvectorhound[pgvector]   # PostgreSQL + pgvector
 ```
 
+Optional synthetic evaluation sets (Ragas-compatible). Ragas itself is optional:
+`generate_testset` accepts a caller-supplied generator and never fabricates
+questions, and raises an actionable `RagasUnavailable` when no generator is given
+and Ragas is absent.
+
+```bash
+pip install pyvectorhound[ragas]
+```
+
 Requires Python 3.8+. PyPI currently carries a macOS ARM64 / CPython 3.9 wheel only (no
 sdist and no `abi3` build for 1.6.0), so on other platforms or interpreter versions,
 install straight from the repo instead (a Rust toolchain is required):
