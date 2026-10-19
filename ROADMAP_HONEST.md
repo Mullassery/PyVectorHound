@@ -28,7 +28,15 @@ those are stated as missing.
   ground-truth list, not fabricated.
 - **int8 scalar quantization** (`src/quantization.rs`): real, 4x memory
   reduction vs f32, measured max reconstruction error ~0.0039 vs the
-  theoretical 8-bit bound ~0.0078.
+  theoretical 8-bit bound ~0.0078. Wired into Python as the opt-in in-process
+  `Hound(quantized=True)` / `enable_quantization()` store
+  (`pyvectorhound/quantization.py`); it is not a write-through layer for the
+  remote database adapters.
+- **Historical metric comparison/drift** (`Hound.compare_metrics()` /
+  `Hound.detect_drift()`): real, computed from samples recorded with
+  `track_metric()`. Without samples in the requested periods they raise a
+  `ValueError` naming the missing data rather than reporting a fabricated
+  result.
 - **OKF diagnostic knowledge base** (`pyvectorhound/okf_diagnostics.py`,
   310 lines): real, persists diagnostic findings as frontmatter markdown
   documents, supports pattern extraction and similar-failure lookup.

@@ -2,6 +2,23 @@
 
 All notable changes to PyVectorHound are documented in this file.
 
+## [Unreleased]
+
+### Added
+- Opt-in int8 quantization wired into `Hound`: `Hound(..., quantized=True)` /
+  `hound.enable_quantization()`, with `add_vectors()`, `search_vectors()`,
+  `get_stored_embeddings()`, and `clear_stored_vectors()`. The in-process store
+  keeps int8 payloads plus per-vector scale/offset and dequantizes on retrieval
+  using the Rust `_core` primitives. Default `quantized=False` behavior is
+  unchanged.
+- `Hound.compare_metrics()` compares metrics recorded via `track_metric()` for
+  baseline/comparison periods; `Hound.detect_drift()` delegates windowed
+  statistics to `TrendAnalyzer.detect_drift_between()`. Both return real
+  measured values and raise `ValueError` naming missing data when the requested
+  periods have no samples.
+- `Hound.track_metric()` accepts an optional explicit `timestamp`, enabling
+  named historical comparisons.
+
 ## [1.8.0] - 2026-10-19
 
 ### Added

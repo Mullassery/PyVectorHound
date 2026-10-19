@@ -111,34 +111,49 @@ if anomalies['low_isotropy']:
 You applied a fix (e.g., upgraded embedding model). What got better?
 
 ```python
-# Compare before/after metrics
+# Record real metric samples as you run diagnostics. Explicit timestamps let
+# you compare named historical periods later.
+hound.track_metric("overall_f1", 0.71, timestamp=datetime(2026, 6, 15))
+# ... apply the change and collect new samples ...
+hound.track_metric("overall_f1", 0.78, timestamp=datetime(2026, 6, 20))
+
 improvement = hound.compare_metrics(
-    before="2026-06-15",  # before change
-    after="2026-06-20"    # after change
+    before="2026-06-15",  # baseline boundary
+    after="2026-06-20"    # comparison boundary
 )
 
-# See breakdown by component
-breakdown = improvement["breakdown"]
-print(f"Overall F1: {breakdown['overall_f1']:.2%}")
-print(f"Vector precision: {breakdown['vector']['precision']:.2%}")
-print(f"BM25 precision: {breakdown['bm25']['precision']:.2%}")
+metric = improvement["metrics"]["overall_f1"]
+print(f"Overall F1 delta: {metric['delta']:+.2f} ({metric['change_pct']:+.1f}%)")
+print(f"Direction: {metric['direction']}")
 ```
+
+`compare_metrics()` does not reconstruct past diagnoses. It compares only
+samples recorded with `track_metric()`; if either period has none, it raises a
+`ValueError` describing what is missing.
 
 ### Task 5: Detect Drift
 
 Get alerts when embedding quality degrades.
 
 ```python
-# Detect drift over a period
+# Detect drift over a period using samples recorded with track_metric()
 drift = hound.detect_drift(
     baseline_date="2026-01-01",
     current_date="2026-06-20"
 )
 
-if drift['significant']:
-    print(f"Drift detected: {drift['amount']:.1%} degradation")
-    print(f"Recommendation: {drift['recommendation']}")
+if drift["significant"]:
+    for name in drift["anomalous_metrics"]:
+        result = drift["metrics"][name]
+        print(
+            f"{name}: {result['drift_direction']} "
+            f"({result['drift_magnitude']:.2f} stddevs, "
+            f"{result['baseline_mean']:.3f} -> {result['current_mean']:.3f})"
+        )
 ```
+
+`detect_drift()` delegates the statistics to `TrendAnalyzer`; it also raises a
+`ValueError` when the requested periods do not contain enough tracked samples.
 
 ## Database Setup
 
@@ -247,9 +262,13 @@ hound = Hound(
 
 - `diagnose(query, top_k, expected_docs)` → `Diagnosis`
 - `compare_models(model_type, candidates)` → `ModelComparison`
+- `track_metric(name, value, timestamp=None)` → `None`
 - `compare_metrics(before, after)` → `Dict`
 - `quality_scorer()` → `QualityScorer`
 - `detect_drift(baseline_date, current_date)` → `Dict`
+- `enable_quantization()` / `quantized=True` → opt-in local int8 store
+- `add_vectors(vectors, ids=None)` / `search_vectors(query, top_k)` → local
+  quantized retrieval; `get_stored_embeddings(ids)` dequantizes on read
 
 ### Diagnosis
 
@@ -380,9 +399,9 @@ apply_change()
 # After change
 after = hound.diagnose(query="sample", top_k=5)
 
-# Compare impact
+# Compare impact (uses samples recorded with track_metric())
 compare = hound.compare_metrics(before_date, after_date)
-log_change(change_description, compare['improvement'])
+log_change(change_description, compare["metrics"])
 ```
 
 ### 4. Use Ground Truth

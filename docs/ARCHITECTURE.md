@@ -55,8 +55,11 @@ coverage):
   `compare_models()` / `compare_metrics()` / `detect_drift()`.
 - `diagnosis.py` — `Diagnosis`: computes per-component metrics, faithfulness
   (if `llm_judge_fn` + `document_texts` given), root cause, and
-  recommendations. Reports `"UNKNOWN"` for BM25/reranker (not implemented)
-  instead of fabricating a score.
+  recommendations. Reports `"UNKNOWN"` for BM25/reranker when the caller
+  supplies no external ranking/scores, instead of fabricating a value.
+- `quantization.py` — `QuantizedVectorStore`, the opt-in in-process int8
+  store used by `Hound(quantized=True)` / `enable_quantization()`; stores
+  int8 payloads plus per-vector scale/offset and dequantizes on read.
 - `database.py` / `db_adapters.py` — `VectorDB` adapter protocol and real
   adapters for Qdrant, Chroma, Milvus, Weaviate, and pgvector.
 - `comparison.py` — `ModelComparison`: `pareto_frontier()`, `ab_test()`.

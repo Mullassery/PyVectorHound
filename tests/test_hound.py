@@ -2,6 +2,7 @@
 
 import numpy as np
 import pytest
+
 from pyvectorhound import Hound
 from pyvectorhound.diagnosis import Diagnosis
 
@@ -147,7 +148,9 @@ class TestDiagnoseBatch:
             def search(self, query_embedding, top_k=5):
                 with self.lock:
                     self.concurrent_calls += 1
-                    self.max_concurrent_calls = max(self.max_concurrent_calls, self.concurrent_calls)
+                    self.max_concurrent_calls = max(
+                        self.max_concurrent_calls, self.concurrent_calls
+                    )
                 try:
                     import time
 
@@ -165,7 +168,7 @@ class TestDiagnoseBatch:
         return hound, adapter
 
     def test_returns_diagnosis_per_query_in_order(self):
-        hound, adapter = self._hound_with_fake_adapter()
+        hound, _ = self._hound_with_fake_adapter()
         embeddings = [np.random.randn(4).astype(np.float32) for _ in range(5)]
 
         diagnoses = hound.diagnose_batch(
@@ -217,6 +220,140 @@ class TestDiagnoseBatch:
         # The good query's search should still have gone through even though
         # the batch as a whole raises for the bad one (no embed_fn configured).
         assert adapter.max_concurrent_calls >= 1
+
+
+class TestCompareMetrics:
+    """compare_metrics() compares real values recorded via track_metric();
+    it does not reconstruct past diagnoses or fabricate missing data."""
+
+    def _hound_with_history(self):
+        from datetime import datetime
+
+        hound = Hound(db="qdrant")
+        for value in (0.90, 0.91):
+            hound.track_metric(
+                "embedding_isotropy", value, timestamp=datetime(2026, 6, 1, 12, 0, 0)
+            )
+        for value in (0.80, 0.79):
+            hound.track_metric(
+                "embedding_isotropy", value, timestamp=datetime(2026, 6, 15, 12, 0, 0)
+            )
+        hound.track_metric("query_latency_ms", 50.0, timestamp=datetime(2026, 6, 1, 12, 0, 0))
+        return hound
+
+    def test_compares_tracked_periods(self):
+        hound = self._hound_with_history()
+
+        result = hound.compare_metrics("2026-06-10", "2026-06-20")
+
+        assert result["metrics_compared"] == 1
+        metric = result["metrics"]["embedding_isotropy"]
+        assert metric["baseline_samples"] == 2
+        assert metric["current_samples"] == 2
+        assert metric["baseline_mean"] == pytest.approx(0.905)
+        assert metric["current_mean"] == pytest.approx(0.795)
+        assert metric["delta"] == pytest.approx(-0.11)
+        assert metric["direction"] == "down"
+        assert metric["change_pct"] < 0
+        assert "query_latency_ms" in result["skipped_metrics"]
+
+    def test_no_tracked_metrics_raises_clear_value_error(self):
+        hound = Hound(db="qdrant")
+
+        with pytest.raises(ValueError, match="no tracked metrics"):
+            hound.compare_metrics("2026-06-10", "2026-06-20")
+
+    def test_missing_one_period_raises_clear_value_error(self):
+        from datetime import datetime
+
+        hound = Hound(db="qdrant")
+        hound.track_metric("embedding_isotropy", 0.9, timestamp=datetime(2026, 6, 1))
+
+        with pytest.raises(ValueError, match="no metric with samples in both"):
+            hound.compare_metrics("2026-06-10", "2026-06-20")
+
+    def test_invalid_date_and_reversed_range_raise_value_error(self):
+        hound = self._hound_with_history()
+
+        with pytest.raises(ValueError, match="YYYY-MM-DD"):
+            hound.compare_metrics("not-a-date", "2026-06-20")
+
+        with pytest.raises(ValueError, match="must not be after"):
+            hound.compare_metrics("2026-06-20", "2026-06-10")
+
+
+class TestDetectDrift:
+    """detect_drift() delegates to TrendAnalyzer's windowed drift statistics."""
+
+    def _hound_with_history(self):
+        from datetime import datetime
+
+        hound = Hound(db="qdrant")
+        for value in (0.90, 0.91, 0.89):
+            hound.track_metric(
+                "embedding_isotropy", value, timestamp=datetime(2026, 6, 1, 12, 0, 0)
+            )
+        for value in (0.70, 0.69, 0.71):
+            hound.track_metric(
+                "embedding_isotropy", value, timestamp=datetime(2026, 6, 15, 12, 0, 0)
+            )
+        return hound
+
+    def test_reports_real_drift_and_significance(self):
+        hound = self._hound_with_history()
+
+        result = hound.detect_drift("2026-06-10", "2026-06-20")
+
+        assert result["metrics_analyzed"] == 1
+        assert result["significant"] is True
+        assert result["anomalous_metrics"] == ["embedding_isotropy"]
+        drift = result["metrics"]["embedding_isotropy"]
+        assert drift["baseline_mean"] == pytest.approx(0.9, abs=0.02)
+        assert drift["current_mean"] == pytest.approx(0.7, abs=0.02)
+        assert drift["drift_direction"] == "down"
+        assert drift["is_anomaly"] is True
+        assert drift["num_samples"] == 3
+
+    def test_optional_metric_filter(self):
+        from datetime import datetime
+
+        hound = self._hound_with_history()
+        hound.track_metric("query_latency_ms", 50.0, timestamp=datetime(2026, 6, 1))
+        hound.track_metric("query_latency_ms", 50.0, timestamp=datetime(2026, 6, 15))
+
+        result = hound.detect_drift("2026-06-10", "2026-06-20", metric_name="embedding_isotropy")
+
+        assert list(result["metrics"]) == ["embedding_isotropy"]
+
+    def test_no_tracked_metrics_raises_clear_value_error(self):
+        hound = Hound(db="qdrant")
+
+        with pytest.raises(ValueError, match="no tracked metrics"):
+            hound.detect_drift("2026-06-10", "2026-06-20")
+
+    def test_missing_one_period_raises_clear_value_error(self):
+        from datetime import datetime
+
+        hound = Hound(db="qdrant")
+        hound.track_metric("embedding_isotropy", 0.9, timestamp=datetime(2026, 6, 1))
+
+        with pytest.raises(ValueError, match="no metric with samples in both"):
+            hound.detect_drift("2026-06-10", "2026-06-20")
+
+    def test_unknown_metric_raises_clear_value_error(self):
+        hound = self._hound_with_history()
+
+        with pytest.raises(ValueError, match="not tracked"):
+            hound.detect_drift("2026-06-10", "2026-06-20", metric_name="not_a_metric")
+
+    def test_invalid_date_and_reversed_range_raise_value_error(self):
+        hound = self._hound_with_history()
+
+        with pytest.raises(ValueError, match="YYYY-MM-DD"):
+            hound.detect_drift("bad-date", "2026-06-20")
+
+        with pytest.raises(ValueError, match="must not be after"):
+            hound.detect_drift("2026-06-20", "2026-06-10")
 
 
 if __name__ == "__main__":

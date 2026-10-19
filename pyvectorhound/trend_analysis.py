@@ -5,10 +5,9 @@ over time to enable proactive diagnostics and optimization.
 """
 
 import statistics
-from dataclasses import dataclass, asdict, field
-from typing import Dict, List, Any, Optional, Tuple
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
-import numpy as np
+from typing import Any, Dict, List, Optional, Tuple
 
 
 @dataclass
@@ -297,9 +296,12 @@ class TrendAnalyzer:
         drift_magnitude = abs(current_mean - baseline_mean) / max(baseline_stddev, 0.01)
         is_anomaly = drift_magnitude > threshold_stddevs
 
-        drift_direction = (
-            "up" if current_mean > baseline_mean else "down" if current_mean < baseline_mean else "stable"
-        )
+        if current_mean > baseline_mean:
+            drift_direction = "up"
+        elif current_mean < baseline_mean:
+            drift_direction = "down"
+        else:
+            drift_direction = "stable"
 
         confidence = min(1.0, drift_magnitude / (threshold_stddevs * 2))
 
@@ -313,6 +315,78 @@ class TrendAnalyzer:
             drift_direction=drift_direction,
             is_anomaly=is_anomaly,
             confidence=confidence,
+            num_samples=len(current_values),
+        )
+
+    def detect_drift_between(
+        self,
+        metric_name: str,
+        baseline_end: datetime,
+        current_end: datetime,
+        threshold_stddevs: float = 2.0,
+    ) -> Optional[DriftAnalysis]:
+        """Detect drift between two explicit time windows.
+
+        Baseline values are points at or before ``baseline_end``; current
+        values are points strictly after ``baseline_end`` and at or before
+        ``current_end``. Unlike :meth:`detect_drift`, this does not use
+        wall-clock ``window_days`` so callers can compare named historical
+        periods.
+
+        Args:
+            metric_name: Name of the tracked metric.
+            baseline_end: Inclusive end of the baseline window.
+            current_end: Inclusive end of the current window.
+            threshold_stddevs: Standard-deviation threshold for an anomaly.
+
+        Returns:
+            DriftAnalysis, or None when either window has no points, the
+            metric is unknown, or ``current_end`` precedes ``baseline_end``.
+        """
+        if metric_name not in self.series or current_end < baseline_end:
+            return None
+
+        points = self.series[metric_name].points
+        baseline_values = [p.value for p in points if p.timestamp <= baseline_end]
+        current_values = [
+            p.value
+            for p in points
+            if baseline_end < p.timestamp <= current_end
+        ]
+
+        if not baseline_values or not current_values:
+            return None
+
+        baseline_mean = statistics.mean(baseline_values)
+        baseline_stddev = (
+            statistics.stdev(baseline_values) if len(baseline_values) > 1 else 0.0
+        )
+        current_mean = statistics.mean(current_values)
+        current_stddev = (
+            statistics.stdev(current_values) if len(current_values) > 1 else 0.0
+        )
+
+        drift_magnitude = abs(current_mean - baseline_mean) / max(baseline_stddev, 0.01)
+        is_anomaly = drift_magnitude > threshold_stddevs
+
+        drift_direction = (
+            "up"
+            if current_mean > baseline_mean
+            else "down"
+            if current_mean < baseline_mean
+            else "stable"
+        )
+
+        return DriftAnalysis(
+            metric_name=metric_name,
+            baseline_mean=baseline_mean,
+            baseline_stddev=baseline_stddev,
+            current_mean=current_mean,
+            current_stddev=current_stddev,
+            drift_magnitude=drift_magnitude,
+            drift_direction=drift_direction,
+            is_anomaly=is_anomaly,
+            confidence=min(1.0, drift_magnitude / (threshold_stddevs * 2)),
             num_samples=len(current_values),
         )
 
@@ -482,7 +556,6 @@ class TrendAnalyzer:
             if metric_name not in self.series:
                 continue
 
-            ts = self.series[metric_name]
             historical = self.get_historical_comparison(metric_name)
             drift = self.detect_drift(metric_name)
             regression = self.detect_regression(metric_name)

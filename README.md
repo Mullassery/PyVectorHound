@@ -68,8 +68,12 @@ you already have and tells you, with real computed metrics, what's wrong.
   semantic, and recency signals, then penalizing near-duplicates using real cosine
   similarity. `compute_reranker_metrics(...)` reports MRR/NDCG/Precision@K/Recall@K/diversity
   against your ground truth.
-- **int8 scalar quantization** (`src/quantization.rs`) for shrinking large local vector
-  indices (4x memory reduction, bounded reconstruction error).
+- **Opt-in int8 scalar quantization** via `Hound(..., quantized=True)` /
+  `hound.enable_quantization()`: `add_vectors()` stores per-vector int8 payloads plus
+  scales/offsets, and retrieval dequantizes them on the fly (4x smaller payload with
+  bounded reconstruction error). The default float path is unchanged.
+- **Historical metric comparison** via `Hound.compare_metrics()` / `Hound.detect_drift()`,
+  computed from real values recorded with `Hound.track_metric()`.
 
 ## Who it's for
 
@@ -95,11 +99,15 @@ you already have and tells you, with real computed metrics, what's wrong.
 - **Not a full retrieve-then-generate evaluator.** Unlike Ragas, PyVectorHound never
   requires an LLM to generate a final answer, so it has no visibility into a
   generation-layer failure.
-- **Not fully integrated into storage/retrieval.** The int8 quantization functions are
-  low-level quantize/dequantize primitives, not wired into `Hound`'s storage/retrieval path.
-- **Some methods remain unimplemented:** `Hound.compare_metrics()` and `Hound.detect_drift()`
-  raise `NotImplementedError`; `ModelComparison`/`Hound.compare_models()` reports real
-  published cost/latency metadata but cannot measure quality unless you pass `quality_fn`.
+- **Quantization is an in-process store, not a write-through layer for remote databases.**
+  `Hound(..., quantized=True)` keeps a local int8 copy that you populate explicitly with
+  `add_vectors()`; it does not change how Qdrant/Chroma/Milvus/Weaviate/pgvector store data.
+- **`compare_metrics()` / `detect_drift()` need tracked history.** They compare only values
+  recorded with `track_metric()` (optionally with explicit timestamps). They do not
+  reconstruct past diagnoses; if the requested periods have no tracked samples, they raise
+  a `ValueError` naming what is missing instead of inventing a result.
+- **`ModelComparison`/`Hound.compare_models()`** reports real published cost/latency
+  metadata but cannot measure quality unless you pass `quality_fn`.
 
 ## Audit findings
 
@@ -342,6 +350,23 @@ is scalar quantization, not product quantization, and it isn't SIMD/GPU accelera
 `i8` instead of `f32` is a **4x memory reduction**, at the cost of bounded reconstruction
 error (max absolute error per element is at most `(max - min) / 255`). Constant vectors
 (including all-zero) round-trip exactly.
+
+Hound wires this into an opt-in local store. While it has vectors, `diagnose()` and
+`search_vectors()` read from it instead of the database adapter; the default
+`quantized=False` path keeps using the adapter exactly as before.
+
+```python
+from pyvectorhound import Hound
+
+hound = Hound(db="qdrant", quantized=True)  # or hound.enable_quantization()
+hound.add_vectors([embedding_a, embedding_b], ids=["doc_a", "doc_b"])
+
+# Stored as int8 + per-vector scale/offset; dequantized on read.
+results = hound.search_vectors(query_embedding, top_k=5)
+restored = hound.get_stored_embeddings(["doc_a"])["doc_a"]
+```
+
+The rust primitives remain available directly too:
 
 ```python
 from pyvectorhound import _core

@@ -1,18 +1,54 @@
 """Main PyVectorHound class for retrieval diagnostics."""
 
+import statistics
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Optional, List, Dict, Any, Callable
+from datetime import datetime, timezone
+from typing import Any, Callable, Dict, List, Optional
+
 import numpy as np
-from pyvectorhound.database import get_adapter, VectorDB
-from pyvectorhound.diagnosis import Diagnosis
-from pyvectorhound.comparison import ModelComparison
-from pyvectorhound.scorer import QualityScorer
-from pyvectorhound.benchmarking import PerformanceBenchmark, LatencyMetrics
-from pyvectorhound.trend_analysis import TrendAnalyzer
-from pyvectorhound.retrieval_tracing import RetrievalTracer
-from pyvectorhound.retrieval_replay import RetrievalReplayer
-from pyvectorhound.recommendations import RecommendationEngine
+
 from pyvectorhound._retry import call_with_backoff
+from pyvectorhound.benchmarking import LatencyMetrics, PerformanceBenchmark
+from pyvectorhound.comparison import ModelComparison
+from pyvectorhound.database import VectorDB, get_adapter
+from pyvectorhound.diagnosis import Diagnosis
+from pyvectorhound.quantization import QuantizedVectorStore
+from pyvectorhound.recommendations import RecommendationEngine
+from pyvectorhound.retrieval_replay import RetrievalReplayer
+from pyvectorhound.retrieval_tracing import RetrievalTracer
+from pyvectorhound.scorer import QualityScorer
+from pyvectorhound.trend_analysis import TrendAnalyzer
+
+
+def _parse_hound_timestamp(value: Any, argument_name: str) -> datetime:
+    """Parse a date/datetime argument into naive UTC for trend comparisons."""
+    if isinstance(value, datetime):
+        parsed = value
+    else:
+        text = str(value).strip()
+        parsed = None
+        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+            try:
+                parsed = datetime.strptime(text, fmt)
+                break
+            except ValueError:
+                continue
+        if parsed is None:
+            raise ValueError(
+                f"{argument_name} must be 'YYYY-MM-DD' or 'YYYY-MM-DD HH:MM:SS', got {value!r}"
+            )
+
+    if parsed.tzinfo is not None:
+        parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+    return parsed
+
+
+def _series_stats(values: List[float]) -> Dict[str, float]:
+    """Mean/stddev for a non-empty list (stddev is 0.0 for a single sample)."""
+    return {
+        "mean": statistics.mean(values),
+        "stddev": statistics.stdev(values) if len(values) > 1 else 0.0,
+    }
 
 
 class Hound:
@@ -50,13 +86,15 @@ class Hound:
         api_key: Optional[str] = None,
         embed_fn: Optional[Callable[[str], np.ndarray]] = None,
         llm_judge_fn: Optional[Callable[[str, List[str]], Dict[str, Any]]] = None,
-        **kwargs: Any
+        quantized: bool = False,
+        **kwargs: Any,
     ):
         """
         Initialize PyVectorHound.
 
         Args:
-            db: Vector database type. Supported: 'qdrant', 'chroma', 'milvus', 'weaviate', 'postgres'
+            db: Vector database type. Supported: 'qdrant', 'chroma',
+                'milvus', 'weaviate', 'postgres'
             endpoint: Database endpoint URL
             index_name: Index/collection name in the database
             api_key: Optional API key (if needed)
@@ -69,6 +107,11 @@ class Hound:
                 runs an LLM-as-judge faithfulness/contradiction check (see
                 `Diagnosis.__init__`). Set once here and every `diagnose()`
                 call that's given `document_texts` will use it automatically.
+            quantized: Opt in to an additional in-process int8-quantized vector
+                store. When enabled, populate it with `add_vectors()`; while it
+                is non-empty, `diagnose()`/`search_vectors()` read from it
+                instead of the database adapter. The default `False` preserves
+                the existing float path unchanged.
             **kwargs: Additional database-specific parameters
 
         Raises:
@@ -81,6 +124,10 @@ class Hound:
         self.embed_fn = embed_fn
         self.llm_judge_fn = llm_judge_fn
         self.kwargs = kwargs
+        self.quantized = bool(quantized)
+        self._quantized_store: Optional[QuantizedVectorStore] = (
+            QuantizedVectorStore() if self.quantized else None
+        )
 
         # Initialize database adapter. Connection is intentionally lazy: every
         # adapter method (search/get_embeddings/corpus_size) already connects
@@ -92,7 +139,7 @@ class Hound:
             endpoint=self.endpoint,
             index_name=self.index_name,
             api_key=self.api_key,
-            **self.kwargs
+            **self.kwargs,
         )
 
         # Initialize performance benchmarking and trend analysis
@@ -103,6 +150,140 @@ class Hound:
         self._tracer = RetrievalTracer()
         self._replayer = RetrievalReplayer()
         self._recommendation_engine = RecommendationEngine()
+
+    def _active_adapter(self) -> VectorDB:
+        """Return the quantized store when it has data, else the DB adapter."""
+        if self._quantized_store is not None and not self._quantized_store.is_empty:
+            return self._quantized_store
+        return self.adapter
+
+    def enable_quantization(self) -> QuantizedVectorStore:
+        """Enable the opt-in in-process int8-quantized vector store.
+
+        This is equivalent to constructing ``Hound(..., quantized=True)``.
+        The store starts empty; call `add_vectors()` to populate it. While it
+        is non-empty, `diagnose()`/`search_vectors()` use it instead of the
+        database adapter.
+
+        Returns:
+            The active `QuantizedVectorStore`.
+
+        Raises:
+            RuntimeError: If the compiled Rust extension (`_core`, which
+                implements quantize/dequantize) is unavailable.
+        """
+        if self._quantized_store is None:
+            from pyvectorhound.quantization import _require_core
+
+            _require_core()
+            self._quantized_store = QuantizedVectorStore()
+            self.quantized = True
+        return self._quantized_store
+
+    def add_vectors(
+        self,
+        vectors: List[np.ndarray],
+        ids: Optional[List[str]] = None,
+    ) -> List[str]:
+        """Quantize and store embeddings in the opt-in local store.
+
+        Existing ids are overwritten. If ``ids`` is omitted, ids are generated
+        as ``quantized_0``, ``quantized_1``, ... without overwriting existing
+        entries.
+
+        Args:
+            vectors: Embedding vectors to store (all the same dimension).
+            ids: Optional document ids, one per vector.
+
+        Returns:
+            The stored document ids.
+
+        Raises:
+            ValueError: If quantization is not enabled, lengths differ, or a
+                vector is empty/non-1-D/non-finite/inconsistent in dimension.
+        """
+        if self._quantized_store is None:
+            raise ValueError(
+                "Quantization is not enabled on this Hound instance. Construct "
+                "it with Hound(..., quantized=True) or call "
+                "hound.enable_quantization() before add_vectors(). The default "
+                "float path is unchanged."
+            )
+
+        if ids is None:
+            start = len(self._quantized_store)
+            ids = [f"quantized_{start + i}" for i in range(len(vectors))]
+        return self._quantized_store.add(ids, vectors)
+
+    def search_vectors(
+        self,
+        query_embedding: np.ndarray,
+        top_k: int = 5,
+    ) -> List[Dict[str, Any]]:
+        """Search the opt-in quantized store by cosine similarity.
+
+        Stored int8 vectors are dequantized on retrieval, then scored.
+
+        Args:
+            query_embedding: Query vector.
+            top_k: Number of results to return.
+
+        Returns:
+            ``{"id", "score", "embedding"}`` dicts ordered by descending
+            cosine similarity.
+
+        Raises:
+            ValueError: If quantization is not enabled, the query has the
+                wrong dimension/has zero magnitude, or contains NaN/Inf.
+            RuntimeError: If the compiled Rust extension is unavailable.
+        """
+        if self._quantized_store is None:
+            raise ValueError(
+                "Quantization is not enabled on this Hound instance. Construct "
+                "it with Hound(..., quantized=True) or call "
+                "hound.enable_quantization() before search_vectors()."
+            )
+        return self._quantized_store.search(query_embedding, top_k=top_k)
+
+    def get_stored_embeddings(
+        self,
+        doc_ids: Optional[List[str]] = None,
+    ) -> Dict[str, np.ndarray]:
+        """Read embeddings back from the opt-in quantized store.
+
+        Args:
+            doc_ids: Ids to retrieve. If omitted, every stored id is read.
+
+        Returns:
+            Dequantized ``float32`` embeddings keyed by document id. Missing
+            ids are omitted.
+
+        Raises:
+            ValueError: If quantization is not enabled.
+            RuntimeError: If the compiled Rust extension is unavailable.
+        """
+        if self._quantized_store is None:
+            raise ValueError(
+                "Quantization is not enabled on this Hound instance. Construct "
+                "it with Hound(..., quantized=True) or call "
+                "hound.enable_quantization() before get_stored_embeddings()."
+            )
+        ids = list(self._quantized_store.ids) if doc_ids is None else doc_ids
+        return self._quantized_store.get_embeddings(ids)
+
+    def clear_stored_vectors(self) -> None:
+        """Remove every vector from the opt-in quantized store.
+
+        Raises:
+            ValueError: If quantization is not enabled.
+        """
+        if self._quantized_store is None:
+            raise ValueError(
+                "Quantization is not enabled on this Hound instance. Construct "
+                "it with Hound(..., quantized=True) or call "
+                "hound.enable_quantization() before clear_stored_vectors()."
+            )
+        self._quantized_store.clear()
 
     def diagnose(
         self,
@@ -173,15 +354,17 @@ class Hound:
         else:
             query_embedding = np.asarray(query_embedding, dtype=np.float32)
 
-        # Search for results
-        results = self.adapter.search(query_embedding, top_k=top_k)
+        # Search for results. When the opt-in quantized store has vectors,
+        # it is the retrieval source; otherwise the configured DB adapter is.
+        adapter = self._active_adapter()
+        results = adapter.search(query_embedding, top_k=top_k)
 
         # Create diagnosis
         diagnosis = Diagnosis(
             query=query,
             results=results,
             expected_docs=expected_docs,
-            adapter=self.adapter,
+            adapter=adapter,
             query_embedding=query_embedding,
             trend_analyzer=self._trend_analyzer,
             document_texts=document_texts,
@@ -301,7 +484,7 @@ class Hound:
                 i = future_to_index[future]
                 try:
                     results[i] = future.result()
-                except Exception as exc:  # noqa: BLE001 - surfaced to the caller below
+                except Exception as exc:
                     errors[i] = exc
 
         if errors:
@@ -341,7 +524,7 @@ class Hound:
             candidates=candidates,
             adapter=self.adapter,
             sample_size=sample_size,
-            **kwargs
+            **kwargs,
         )
 
         comparison.benchmark()
@@ -356,26 +539,103 @@ class Hound:
         """
         Compare metrics before and after applying a change.
 
-        Hound keeps no historical record of past diagnoses by date, so it
-        has nothing to honestly compare `before` against `after` with. Use
-        `hound.track_metric()` after each `diagnose()` call to build a real
-        time series, then `hound.get_trend_report()` to compare periods for
-        real.
+        This compares real values that were recorded with `track_metric()`.
+        Baseline values are points at or before ``before``; comparison values
+        are points strictly after ``before`` and at or before ``after``. It
+        does not reconstruct past diagnoses from the database, so call
+        `track_metric()` as you run diagnostics to build the series.
 
         Args:
-            before: Timestamp or date of baseline (format: YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)
-            after: Timestamp or date of comparison (same format)
+            before: Baseline boundary (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS).
+                Points at or before this time form the baseline period.
+            after: Comparison boundary (same format). Points after ``before``
+                and at or before this time form the comparison period.
+
+        Returns:
+            Dictionary with per-metric baseline/current mean, stddev, sample
+            counts, delta, percent change, and direction. Metrics that lack
+            data in either period are listed under ``skipped_metrics`` with
+            the reason rather than being assigned a fabricated value.
 
         Raises:
-            NotImplementedError: Always -- this method has no backing data
-                store to answer the question honestly.
+            ValueError: If a timestamp cannot be parsed, ``before`` is after
+                ``after``, no metrics have been tracked, or no metric has
+                samples in both periods.
         """
-        raise NotImplementedError(
-            f"compare_metrics() has no historical data to compare {before!r} "
-            f"against {after!r} -- Hound does not store past diagnoses. Use "
-            "track_metric() after each diagnose() call, then get_trend_report() "
-            "to compare periods for real."
-        )
+        before_dt = _parse_hound_timestamp(before, "before")
+        after_dt = _parse_hound_timestamp(after, "after")
+        if before_dt > after_dt:
+            raise ValueError(f"before ({before!r}) must not be after after ({after!r})")
+
+        series = self._trend_analyzer.series
+        if not series:
+            raise ValueError(
+                "compare_metrics() has no tracked metrics to compare. Call "
+                "hound.track_metric(name, value) as you run diagnoses (or at "
+                "any cadence you want to compare), then retry."
+            )
+
+        metrics: Dict[str, Dict[str, Any]] = {}
+        skipped: Dict[str, str] = {}
+        for metric_name, time_series in series.items():
+            baseline_values = [
+                point.value for point in time_series.points if point.timestamp <= before_dt
+            ]
+            current_values = [
+                point.value
+                for point in time_series.points
+                if before_dt < point.timestamp <= after_dt
+            ]
+
+            if not baseline_values:
+                skipped[metric_name] = "no tracked points at or before the baseline boundary"
+                continue
+            if not current_values:
+                skipped[metric_name] = (
+                    "no tracked points after the baseline boundary and at or "
+                    "before the comparison boundary"
+                )
+                continue
+
+            baseline_stats = _series_stats(baseline_values)
+            current_stats = _series_stats(current_values)
+            delta = current_stats["mean"] - baseline_stats["mean"]
+            change_pct = (
+                delta / abs(baseline_stats["mean"]) * 100 if baseline_stats["mean"] != 0 else None
+            )
+            direction = "stable" if abs(delta) <= 1e-12 else "up" if delta > 0 else "down"
+
+            metrics[metric_name] = {
+                "baseline_samples": len(baseline_values),
+                "current_samples": len(current_values),
+                "baseline_mean": baseline_stats["mean"],
+                "baseline_stddev": baseline_stats["stddev"],
+                "current_mean": current_stats["mean"],
+                "current_stddev": current_stats["stddev"],
+                "delta": delta,
+                "change_pct": change_pct,
+                "direction": direction,
+            }
+
+        if not metrics:
+            detail = "; ".join(f"{name}: {reason}" for name, reason in sorted(skipped.items()))
+            raise ValueError(
+                "compare_metrics() found no metric with samples in both "
+                f"periods ({detail}). Track at least one value at or before "
+                f"{before!r} and another after it up to {after!r}."
+            )
+
+        return {
+            "before": before_dt.isoformat(),
+            "after": after_dt.isoformat(),
+            "metrics_compared": len(metrics),
+            "metrics": metrics,
+            "skipped_metrics": skipped,
+            "explanation": (
+                "Computed only from values recorded via track_metric(); no "
+                "historical diagnoses are reconstructed or invented."
+            ),
+        }
 
     def quality_scorer(self) -> QualityScorer:
         """
@@ -389,38 +649,103 @@ class Hound:
             >>> quality = scorer.score(embedding_vector)
             >>> health = scorer.corpus_health()
         """
-        return QualityScorer(hound=self, adapter=self.adapter, trend_analyzer=self._trend_analyzer)
+        return QualityScorer(
+            hound=self,
+            adapter=self._active_adapter(),
+            trend_analyzer=self._trend_analyzer,
+        )
 
     def detect_drift(
         self,
         baseline_date: str,
         current_date: str,
+        metric_name: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Detect embedding quality drift over time.
+        Detect drift in tracked metrics between two time periods.
 
-        This convenience method has no historical record to compare
-        `baseline_date` against `current_date` with. Use
-        `hound.analyze_trends()` (a real `TrendAnalyzer`) instead:
-        `track_metric()` after each `diagnose()` call to build a real time
-        series, then `TrendAnalyzer.detect_drift(metric_name)` for a real
-        statistical comparison.
+        Delegates the statistics to `TrendAnalyzer.detect_drift_between()`.
+        Baseline values are points at or before ``baseline_date``; current
+        values are points strictly after it and at or before ``current_date``.
+        A metric is reported only when both windows have samples.
 
         Args:
-            baseline_date: Baseline date (format: YYYY-MM-DD)
-            current_date: Current date (format: YYYY-MM-DD)
+            baseline_date: Inclusive baseline boundary (YYYY-MM-DD or
+                YYYY-MM-DD HH:MM:SS).
+            current_date: Inclusive current boundary (same format).
+            metric_name: Optional single metric to analyze. When omitted,
+                every tracked metric with data in both windows is analyzed.
+
+        Returns:
+            Dictionary with per-metric `DriftAnalysis` data (as dicts), the
+            list of anomalous metrics, and a ``significant`` boolean. Metrics
+            that lack data in either window are listed under
+            ``skipped_metrics`` with the reason.
 
         Raises:
-            NotImplementedError: Always -- this method has no backing data
-                store to answer the question honestly.
+            ValueError: If a timestamp cannot be parsed, ``baseline_date`` is
+                after ``current_date``, the named metric is not tracked, no
+                metrics are tracked, or no analyzed metric has samples in
+                both periods.
         """
-        raise NotImplementedError(
-            f"detect_drift() has no historical data to compare {baseline_date!r} "
-            f"against {current_date!r} -- Hound does not store past diagnoses. "
-            "Use hound.analyze_trends() (TrendAnalyzer): track_metric() after "
-            "each diagnose() call, then TrendAnalyzer.detect_drift(metric_name) "
-            "for a real statistical comparison."
-        )
+        baseline_dt = _parse_hound_timestamp(baseline_date, "baseline_date")
+        current_dt = _parse_hound_timestamp(current_date, "current_date")
+        if baseline_dt > current_dt:
+            raise ValueError(
+                f"baseline_date ({baseline_date!r}) must not be after "
+                f"current_date ({current_date!r})"
+            )
+
+        series = self._trend_analyzer.series
+        if not series:
+            raise ValueError(
+                "detect_drift() has no tracked metrics. Call "
+                "hound.track_metric(name, value) over time, then retry."
+            )
+
+        if metric_name is not None:
+            if metric_name not in series:
+                raise ValueError(
+                    f"Metric {metric_name!r} is not tracked. Tracked metrics: {sorted(series)}"
+                )
+            metric_names = [metric_name]
+        else:
+            metric_names = list(series)
+
+        drifts: Dict[str, Dict[str, Any]] = {}
+        skipped: Dict[str, str] = {}
+        for name in metric_names:
+            drift = self._trend_analyzer.detect_drift_between(name, baseline_dt, current_dt)
+            if drift is None:
+                skipped[name] = (
+                    "needs at least one tracked point at or before "
+                    "baseline_date and one after it up to current_date"
+                )
+            else:
+                drifts[name] = drift.to_dict()
+
+        if not drifts:
+            detail = "; ".join(f"{name}: {reason}" for name, reason in sorted(skipped.items()))
+            raise ValueError(
+                "detect_drift() found no metric with samples in both periods "
+                f"({detail}). Track values on both sides of {baseline_date!r} "
+                f"and up to {current_date!r}."
+            )
+
+        anomalous = [name for name, drift in drifts.items() if drift["is_anomaly"]]
+        return {
+            "baseline_date": baseline_dt.isoformat(),
+            "current_date": current_dt.isoformat(),
+            "metrics_analyzed": len(drifts),
+            "metrics": drifts,
+            "anomalous_metrics": anomalous,
+            "significant": bool(anomalous),
+            "skipped_metrics": skipped,
+            "explanation": (
+                "Computed only from values recorded via track_metric(); no "
+                "historical diagnoses are reconstructed or invented."
+            ),
+        }
 
     def benchmark(self) -> PerformanceBenchmark:
         """
@@ -476,6 +801,7 @@ class Hound:
         self,
         metric_name: str,
         value: float,
+        timestamp: Optional[datetime] = None,
         **tags,
     ) -> None:
         """
@@ -484,13 +810,16 @@ class Hound:
         Args:
             metric_name: Name of metric (e.g., "embedding_isotropy")
             value: Metric value
+            timestamp: Optional UTC datetime for the sample (defaults to now).
+                Supply explicit timestamps when you want to compare or detect
+                drift over named historical periods.
             **tags: Optional tags for filtering (e.g., db="qdrant")
 
         Examples:
             >>> hound.track_metric("embedding_isotropy", 0.92, model="openai")
             >>> hound.track_metric("query_latency_ms", 45.2, db="qdrant")
         """
-        self._trend_analyzer.track_metric(metric_name, value, **tags)
+        self._trend_analyzer.track_metric(metric_name, value, timestamp=timestamp, **tags)
 
     def get_performance_report(self) -> Dict[str, Any]:
         """
