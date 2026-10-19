@@ -363,6 +363,11 @@ retrieve-then-generate pipeline end to end.
 - [CHANGELOG.md](CHANGELOG.md) — release history.
 - [examples/](examples/) — runnable scripts.
 
+## Queue status
+
+Shipped, blocked/failed, and rejected work for this repository is documented in
+[`QUEUE_STATUS.md`](QUEUE_STATUS.md).
+
 ## Contributing
 
 ```bash
