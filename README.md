@@ -363,6 +363,16 @@ retrieve-then-generate pipeline end to end.
 - [CHANGELOG.md](CHANGELOG.md) — release history.
 - [examples/](examples/) — runnable scripts.
 
+## Known issues and deferred work
+
+**Blocked / failed:**
+- Verified adapter coverage tests for LlamaIndex/LangChain/pgvector.
+
+**Rejected / deferred:**
+- Generation-layer evaluation/UI — Ragas/Phoenix own it.
+
+Full shipped/blocked/rejected detail: [`QUEUE_STATUS.md`](QUEUE_STATUS.md).
+
 ## Queue status
 
 Shipped, blocked/failed, and rejected work for this repository is documented in
