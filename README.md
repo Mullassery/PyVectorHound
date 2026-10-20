@@ -117,7 +117,7 @@ work, verification results, and remaining gaps — is recorded in
 
 ## Project status
 
-**Production/Stable** per the package classifier (version 1.8.0), with the honest gaps
+**Production/Stable** per the package classifier (version 1.9.0), with the honest gaps
 above. If a component doesn't have enough input to measure honestly (no `adapter`, fewer
 than 2 documents with embeddings, or no `expected_docs`), it's reported as `UNKNOWN` with an
 explanation of what to supply — never a made-up number. See
@@ -161,11 +161,10 @@ Python version.
 | macOS | arm64, x86_64 | 3.9, 3.10, 3.11, 3.12 |
 | Windows | x86_64 | 3.9, 3.10, 3.11, 3.12 |
 
-> **Current PyPI state:** 1.8.0 predates this release workflow and only ships an
-> sdist plus a CPython 3.12 macOS arm64 wheel. Wheels for the other targets are
-> produced and smoke-tested by the release workflow, but they only reach PyPI
-> when the next `v*` tag is released. Until then, install from source (a Rust
-> toolchain is required) on unsupported targets:
+> **Current PyPI state:** 1.9.0 ships an sdist plus a CPython 3.9 macOS arm64
+> wheel. The release workflow builds and smoke-tests the other targets; those
+> wheels reach PyPI when its upload job runs. Until then, install from source
+> (a Rust toolchain is required) on unsupported targets:
 >
 > ```bash
 > pip install git+https://github.com/Mullassery/PyVectorHound.git
