@@ -161,7 +161,7 @@ Python version.
 | macOS | arm64, x86_64 | 3.9, 3.10, 3.11, 3.12 |
 | Windows | x86_64 | 3.9, 3.10, 3.11, 3.12 |
 
-> **Current PyPI state:** 1.9.0 ships an sdist plus a CPython 3.9 macOS arm64
+> **Current PyPI state:** the latest release ships an sdist plus a CPython 3.9 macOS arm64
 > wheel. The release workflow builds and smoke-tests the other targets; those
 > wheels reach PyPI when its upload job runs. Until then, install from source
 > (a Rust toolchain is required) on unsupported targets:
