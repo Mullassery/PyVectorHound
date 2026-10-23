@@ -37,6 +37,11 @@ All notable changes to PyVectorHound are documented in this file.
   (`actions/checkout@v4`, `actions/setup-python@v5`) and adds a wheel build
   + import smoke job.
 
+## [1.9.3] - 2026-10-23
+
+### Fixed
+- Fixed the MCP connector import to use the public `statguardian` API.
+
 ## [1.8.0] - 2026-10-19
 
 ### Added
