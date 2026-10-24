@@ -93,21 +93,13 @@ those are stated as missing.
 
 ### Needs a dedicated follow-up session (non-trivial, not fixed here)
 
-1. **Two entire modules are dead code with undeclared dependencies.**
-   - `pyvectorhound/server.py` (86 statements): a Flask REST API wrapper.
-     `from flask import Flask` (line ~170) but `flask` is **not declared
-     anywhere in `pyproject.toml`** — installing `pyvectorhound[all]`
-     will not get you Flask, and this module will `ImportError` for
-     anyone who tries to use it. Zero tests, zero references from
-     `examples/`, `README.md`, or `USER_GUIDE.md`.
-   - `pyvectorhound/web_dashboard.py` (501 lines): its own footer HTML
-     says "Powered by FastAPI", but `fastapi` is likewise **not declared
-     anywhere in `pyproject.toml`**. Zero tests, zero references
-     elsewhere in the repo.
-   - Fix requires a decision: either declare `flask`/`fastapi` as real
-     optional-dependency extras and write tests, or delete both modules
-     as unshipped/unmaintained. Currently they are neither — shipped but
-     unusable and unverified.
+1. ~~**Two entire modules are dead code with undeclared dependencies.**~~
+   **Resolved:** `server.py` and `web_dashboard.py` now have declared
+   optional extras (`pyvectorhound[server]` for Flask,
+   `pyvectorhound[dashboard]` for FastAPI/uvicorn) and are included in
+   `pyvectorhound[all]`. The modules already fail with an actionable
+   `ImportError` when the extra is absent; see the README's install
+   section.
 
 2. **`pytest --cov=pyvectorhound` silently reports 0% coverage on every
    module if you install non-editably, but works correctly (56% overall,
@@ -257,10 +249,9 @@ those are stated as missing.
   a large, hard-to-review diff across most of the codebase, unrelated to
   this documentation-focused pass. Left for a dedicated cleanup session
   (see Technical Debt #3).
-- **`server.py` / `web_dashboard.py` undeclared-dependency dead code**:
-  not deleted, not given tests, not given real `pyproject.toml` extras.
-  Needs a maintainer decision on whether these are worth keeping (see
-  Technical Debt #1).
+- ~~**`server.py` / `web_dashboard.py` undeclared-dependency dead code**~~
+  **Resolved:** both now have real optional extras (`server`, `dashboard`)
+  and are included in `all`; see Technical Debt #1.
 - **`RetrievalRanker` Python bindings**: at the time of this 2026-09-20
   audit, not added (wiring `src/retrieval_ranking.rs` into `src/lib.rs`'s
   `#[pymodule]` was judged a real feature addition, not a docs fix, so it

@@ -58,8 +58,7 @@ large/dedicated-session items, not quick fixes).
 ## Items Remaining
 
 None from this pass. Full pre-existing backlog in `ROADMAP_HONEST.md`
-remains open, notably: dead `server.py`/`web_dashboard.py`/`validation.py`
-modules with undeclared dependencies, 185 `ruff` findings, 10 unmerged
+remains open, notably: 185 `ruff` findings, 10 unmerged
 Dependabot PRs (including a real `pyo3`/`numpy` major-version migration),
 `cargo audit` never run, `DEPLOYMENT.md` accuracy, Python 3.8 CI coverage.
 

@@ -129,6 +129,10 @@ untested, and known technical debt. Changes are tracked in [CHANGELOG.md](CHANGE
 pip install pyvectorhound
 ```
 
+Optional extras: `pip install "pyvectorhound[server]"` (Flask REST API),
+`pip install "pyvectorhound[dashboard]"` (FastAPI dashboard), or
+`pip install "pyvectorhound[all]"`.
+
 Optional vector database clients (only install the one(s) you use):
 
 ```bash
