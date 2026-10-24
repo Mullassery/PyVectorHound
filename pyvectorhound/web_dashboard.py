@@ -4,10 +4,9 @@ FastAPI-based dashboard for visualizing traces, replays, trends,
 recommendations, and analytics in real-time.
 """
 
-from typing import Optional, Dict, Any, List
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from datetime import datetime, timedelta
-import json
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -42,10 +41,12 @@ class DashboardMetrics:
         Args:
             trace_data: Trace data dictionary
         """
-        self.traces.append({
-            **trace_data,
-            "timestamp": datetime.utcnow().isoformat(),
-        })
+        self.traces.append(
+            {
+                **trace_data,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
 
     def add_replay_result(self, result_data: Dict[str, Any]) -> None:
         """Add replay result to metrics.
@@ -53,10 +54,12 @@ class DashboardMetrics:
         Args:
             result_data: Replay result dictionary
         """
-        self.replay_results.append({
-            **result_data,
-            "timestamp": datetime.utcnow().isoformat(),
-        })
+        self.replay_results.append(
+            {
+                **result_data,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
 
     def add_recommendation(self, rec_data: Dict[str, Any]) -> None:
         """Add recommendation to metrics.
@@ -64,10 +67,12 @@ class DashboardMetrics:
         Args:
             rec_data: Recommendation dictionary
         """
-        self.recommendations.append({
-            **rec_data,
-            "timestamp": datetime.utcnow().isoformat(),
-        })
+        self.recommendations.append(
+            {
+                **rec_data,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
 
     def add_trend_data(self, trend_data: Dict[str, Any]) -> None:
         """Add trend data to metrics.
@@ -75,10 +80,12 @@ class DashboardMetrics:
         Args:
             trend_data: Trend data dictionary
         """
-        self.trends.append({
-            **trend_data,
-            "timestamp": datetime.utcnow().isoformat(),
-        })
+        self.trends.append(
+            {
+                **trend_data,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
 
     def add_analytics_report(self, report_data: Dict[str, Any]) -> None:
         """Add analytics report to metrics.
@@ -86,10 +93,12 @@ class DashboardMetrics:
         Args:
             report_data: Analytics report dictionary
         """
-        self.analytics_reports.append({
-            **report_data,
-            "timestamp": datetime.utcnow().isoformat(),
-        })
+        self.analytics_reports.append(
+            {
+                **report_data,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
 
     def get_summary(self) -> Dict[str, Any]:
         """Get dashboard summary.
@@ -119,10 +128,7 @@ class DashboardMetrics:
             Chart data dictionary
         """
         cutoff = datetime.utcnow() - timedelta(hours=hours)
-        recent_traces = [
-            t for t in self.traces
-            if datetime.fromisoformat(t["timestamp"]) > cutoff
-        ]
+        recent_traces = [t for t in self.traces if datetime.fromisoformat(t["timestamp"]) > cutoff]
 
         latencies = [t.get("latency_ms", 0) for t in recent_traces]
         recalls = [t.get("recall", 0) for t in recent_traces]
@@ -158,8 +164,12 @@ class DashboardMetrics:
         # Calculate averages
         for db_name in db_stats:
             count = db_stats[db_name]["count"]
-            db_stats[db_name]["avg_latency_ms"] = db_stats[db_name]["total_latency"] / count if count > 0 else 0
-            db_stats[db_name]["avg_recall"] = db_stats[db_name]["total_recall"] / count if count > 0 else 0
+            db_stats[db_name]["avg_latency_ms"] = (
+                db_stats[db_name]["total_latency"] / count if count > 0 else 0
+            )
+            db_stats[db_name]["avg_recall"] = (
+                db_stats[db_name]["total_recall"] / count if count > 0 else 0
+            )
 
         return db_stats
 
@@ -183,7 +193,9 @@ class DashboardMetrics:
 
         for category in categories:
             count = categories[category]["count"]
-            categories[category]["avg_roi"] = categories[category]["total_roi"] / count if count > 0 else 0
+            categories[category]["avg_roi"] = (
+                categories[category]["total_roi"] / count if count > 0 else 0
+            )
 
         return categories
 
@@ -257,12 +269,10 @@ class Dashboard:
         """
         try:
             from fastapi import FastAPI
-            from fastapi.responses import HTMLResponse, JSONResponse
-            from fastapi.staticfiles import StaticFiles
+            from fastapi.responses import HTMLResponse, JSONResponse  # noqa: F401
+            from fastapi.staticfiles import StaticFiles  # noqa: F401
         except ImportError:
-            raise ImportError(
-                "FastAPI not installed. Install with: pip install fastapi uvicorn"
-            )
+            raise ImportError("FastAPI not installed. Install with: pip install fastapi uvicorn")
 
         app = FastAPI(title=self.config.title)
 
@@ -476,9 +486,7 @@ class Dashboard:
         try:
             import uvicorn
         except ImportError:
-            raise ImportError(
-                "Uvicorn not installed. Install with: pip install uvicorn"
-            )
+            raise ImportError("Uvicorn not installed. Install with: pip install uvicorn")
 
         if self._app is None:
             self.create_app()

@@ -120,3 +120,6 @@ target-version = "py39"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "RUF"]
+# Black already enforces line length where it can; E501 only flags long
+# string literals and URLs that Black cannot split.
+ignore = ["E501"]

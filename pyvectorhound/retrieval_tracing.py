@@ -5,12 +5,12 @@ interactive debugging through replay mode.
 """
 
 import time
-import json
-from dataclasses import dataclass, asdict, field
-from typing import Dict, List, Any, Optional, Tuple
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
-import numpy as np
 from enum import Enum
+from typing import Any, Dict, List, Optional
+
+import numpy as np
 
 
 class TracePhase(Enum):
@@ -92,7 +92,11 @@ class RetrievalTrace:
             "timestamp": self.timestamp.isoformat(),
             "embedding_model": self.embedding_model,
             "embedding_latency_ms": self.embedding_latency_ms,
-            "embedding": self.query_embedding.tolist() if include_embeddings and self.query_embedding is not None else None,
+            "embedding": (
+                self.query_embedding.tolist()
+                if include_embeddings and self.query_embedding is not None
+                else None
+            ),
             "vector_search_results": [r.to_dict() for r in self.vector_search_results],
             "bm25_results": [r.to_dict() for r in (self.bm25_results or [])],
             "filtered_results": [r.to_dict() for r in (self.filtered_results or [])],
@@ -139,9 +143,7 @@ class RetrievalTracer:
             vector_search_results=[],
         )
 
-    def record_embedding(
-        self, embedding: np.ndarray, latency_ms: float
-    ) -> None:
+    def record_embedding(self, embedding: np.ndarray, latency_ms: float) -> None:
         """Record query embedding.
 
         Args:
@@ -195,9 +197,7 @@ class RetrievalTracer:
         self._current_trace.phase_metrics[phase.value] = metrics
         self._phase_start_time = None
 
-    def record_vector_search_results(
-        self, results: List[SearchResult]
-    ) -> None:
+    def record_vector_search_results(self, results: List[SearchResult]) -> None:
         """Record vector search results.
 
         Args:
@@ -340,11 +340,7 @@ class RetrievalTracer:
         recall_at_k = {}
         for k in [1, 5, 10]:
             if len(trace.vector_search_results) >= k:
-                relevant = sum(
-                    1
-                    for r in trace.vector_search_results[:k]
-                    if r.is_relevant
-                )
+                relevant = sum(1 for r in trace.vector_search_results[:k] if r.is_relevant)
                 recall_at_k[k] = relevant / k
 
         return {
@@ -382,9 +378,7 @@ class RetrievalTracer:
 
         return trace.to_dict(include_embeddings=include_embeddings)
 
-    def export_all_traces(
-        self, include_embeddings: bool = False
-    ) -> List[Dict[str, Any]]:
+    def export_all_traces(self, include_embeddings: bool = False) -> List[Dict[str, Any]]:
         """Export all traces.
 
         Args:

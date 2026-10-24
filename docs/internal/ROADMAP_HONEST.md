@@ -127,22 +127,11 @@ those are stated as missing.
      an undertested one. Same disposition question as #1: wire it in and
      test it, or remove it.
 
-3. **`cargo clippy`/`cargo fmt`/`ruff`/`black`/`mypy` are configured in
-   `pyproject.toml` but not run in CI at all.** `.github/workflows/ci.yml`
-   only runs `cargo build`, `cargo test`, and `pytest`. Confirmed by
-   direct run in this audit:
-   - `ruff check .` → **185 errors** (50 line-too-long, 43 unused-import,
-     40 blank-line-with-whitespace, 31 unsorted-imports, plus smaller
-     categories). 108 are auto-fixable with `ruff check . --fix`.
-   - `black --check pyvectorhound/ tests/` → **39 of 41 files** would be
-     reformatted.
-   - ~~`pyproject.toml`'s `[tool.ruff]` section uses the deprecated
-     top-level `select` key instead of `[tool.ruff.lint] select`~~
-     **Fixed 2026-09-22** — moved to `[tool.ruff.lint] select`; `ruff
-     check .` no longer emits the deprecation warning (still reports the
-     same 185 pre-existing findings, untouched — see below).
-   None of this is enforced, so it will keep drifting. A dedicated pass
-   should either wire these into CI or drop the dead config.
+3. ~~**`cargo clippy`/`cargo fmt`/`ruff`/`black`/`mypy` are configured in
+   `pyproject.toml` but not run in CI at all.**~~ **Resolved:** the tree is
+   formatted with `black` and `ruff check .` is clean; CI now runs both as a
+   `python-lint` job. `E501` is intentionally ignored because Black owns line
+   length and cannot split long string literals.
 
 4. ~~**`cli.py` has a real, working `main()`/argparse CLI (326 lines) but
    is not installable as a command.**~~ **Fixed 2026-09-22.** Added
@@ -244,11 +233,9 @@ those are stated as missing.
 
 ## Things deliberately left alone in this pass
 
-- **185 `ruff` findings and 39/41 `black`-non-compliant files**: not
-  auto-fixed. Running `ruff check . --fix` / `black .` now would produce
-  a large, hard-to-review diff across most of the codebase, unrelated to
-  this documentation-focused pass. Left for a dedicated cleanup session
-  (see Technical Debt #3).
+- ~~**185 `ruff` findings and 39/41 `black`-non-compliant files**~~ **Resolved:**
+  `black .` and `ruff check . --fix` were run; the remaining issues were fixed
+  directly and lint is now enforced in CI.
 - ~~**`server.py` / `web_dashboard.py` undeclared-dependency dead code**~~
   **Resolved:** both now have real optional extras (`server`, `dashboard`)
   and are included in `all`; see Technical Debt #1.

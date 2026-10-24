@@ -1,7 +1,6 @@
 """Model comparison for evaluating embedding and reranker models."""
 
-from typing import List, Dict, Any, Optional, Callable
-
+from typing import Any, Callable, Dict, List, Optional
 
 # Model metadata for cost and performance
 MODEL_METADATA = {
@@ -233,9 +232,7 @@ Benchmarking {len(self.candidates)} models on your corpus...
         # Best quality: highest F1 / NDCG among models with measured quality;
         # falls back to lowest cost if no model has measured quality.
         key = "f1_score" if self.model_type == "embedding" else "ndcg"
-        measured = {
-            m: v for m, v in self._results.items() if v.get(key) is not None
-        }
+        measured = {m: v for m, v in self._results.items() if v.get(key) is not None}
         if measured:
             best_quality = max(measured.items(), key=lambda x: x[1][key])[0]
         else:
@@ -255,7 +252,9 @@ Benchmarking {len(self.candidates)} models on your corpus...
                 best_value = model
 
         # Best budget: lowest cost
-        best_budget = min(self._results.items(), key=lambda x: x[1].get("cost_per_1m", float("inf")))[0]
+        best_budget = min(
+            self._results.items(), key=lambda x: x[1].get("cost_per_1m", float("inf"))
+        )[0]
 
         return {
             "best_quality": best_quality,

@@ -62,9 +62,7 @@ class TestBackendFailureInjection:
         """A backend error (e.g. filtering on an unindexed payload field) must
         surface, not be turned into a silent empty result."""
         adapter = QdrantAdapter(endpoint="http://localhost:6333", index_name="docs")
-        adapter.client = _RaisingClient(
-            RuntimeError("filter on unindexed payload field 'tenant'")
-        )
+        adapter.client = _RaisingClient(RuntimeError("filter on unindexed payload field 'tenant'"))
         with pytest.raises(RuntimeError, match="unindexed payload"):
             adapter.search(np.ones(3, dtype=np.float32), top_k=5)
 

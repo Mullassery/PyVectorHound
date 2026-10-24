@@ -4,11 +4,9 @@ Stores and retrieves retrieval failure diagnostics as OKF documents.
 Enables pattern learning and autonomous recommendations from historical findings.
 """
 
-import json
-import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 try:
     import frontmatter
@@ -105,10 +103,15 @@ class OKFDiagnosticKnowledgeBase:
                 except Exception as e:
                     print(f"Warning: Failed to load {doc_path}: {e}")
 
-    def record_diagnosis(self, query_id: str, root_cause: str,
-                        confidence: float, failure_types: List[str],
-                        recommendations: List[Dict[str, Any]],
-                        context: Optional[Dict[str, Any]] = None) -> Path:
+    def record_diagnosis(
+        self,
+        query_id: str,
+        root_cause: str,
+        confidence: float,
+        failure_types: List[str],
+        recommendations: List[Dict[str, Any]],
+        context: Optional[Dict[str, Any]] = None,
+    ) -> Path:
         """Save a diagnosis as OKF document.
 
         Args:
@@ -157,7 +160,7 @@ class OKFDiagnosticKnowledgeBase:
             "failure_types": failure_types,
             "recommendations": recommendations,
             "timestamp": datetime.now().isoformat(),
-            **context
+            **context,
         }
 
         # Save as OKF document
@@ -172,7 +175,9 @@ class OKFDiagnosticKnowledgeBase:
 
         return doc_path
 
-    def find_similar_failures(self, root_cause: str, max_results: int = 10) -> List[OKFDiagnosticDocument]:
+    def find_similar_failures(
+        self, root_cause: str, max_results: int = 10
+    ) -> List[OKFDiagnosticDocument]:
         """Find historical failures matching a root cause.
 
         Args:
@@ -185,11 +190,7 @@ class OKFDiagnosticKnowledgeBase:
         matching = self.patterns.get(root_cause, [])
 
         # Sort by confidence (highest first)
-        sorted_matches = sorted(
-            matching,
-            key=lambda doc: doc.confidence,
-            reverse=True
-        )
+        sorted_matches = sorted(matching, key=lambda doc: doc.confidence, reverse=True)
 
         return sorted_matches[:max_results]
 
@@ -237,13 +238,15 @@ class OKFDiagnosticKnowledgeBase:
                     if success_rates:
                         avg_success_rate = sum(success_rates) / len(success_rates)
 
-                pattern_list.append({
-                    "pattern": root_cause,
-                    "frequency": f"{percentage:.1f}%",
-                    "count": count,
-                    "avg_success_rate": f"{avg_success_rate*100:.1f}%",
-                    "okf_link": f"playbooks/{root_cause.lower().replace(' ', '_')}_playbook.md"
-                })
+                pattern_list.append(
+                    {
+                        "pattern": root_cause,
+                        "frequency": f"{percentage:.1f}%",
+                        "count": count,
+                        "avg_success_rate": f"{avg_success_rate*100:.1f}%",
+                        "okf_link": f"playbooks/{root_cause.lower().replace(' ', '_')}_playbook.md",
+                    }
+                )
 
         # Sort by frequency
         return sorted(pattern_list, key=lambda x: float(x["frequency"].rstrip("%")), reverse=True)
@@ -271,8 +274,9 @@ class OKFDiagnosticKnowledgeBase:
 
         return sum(success_rates) / len(success_rates)
 
-    def generate_enhanced_recommendations(self, root_cause: str,
-                                         recommendations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def generate_enhanced_recommendations(
+        self, root_cause: str, recommendations: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
         """Enhance recommendations with historical success data.
 
         Args:
@@ -291,17 +295,16 @@ class OKFDiagnosticKnowledgeBase:
             enhanced_rec = rec.copy()
             if success_rate is not None:
                 enhanced_rec["historical_success_rate"] = success_rate
-                enhanced_rec["confidence_boost"] = success_rate * 0.2  # 20% confidence boost per success rate
+                enhanced_rec["confidence_boost"] = (
+                    success_rate * 0.2
+                )  # 20% confidence boost per success rate
             else:
                 enhanced_rec["historical_success_rate"] = None
 
             enhanced.append(enhanced_rec)
 
         # Sort by historical success rate
-        enhanced.sort(
-            key=lambda r: r.get("historical_success_rate") or 0,
-            reverse=True
-        )
+        enhanced.sort(key=lambda r: r.get("historical_success_rate") or 0, reverse=True)
 
         return enhanced
 

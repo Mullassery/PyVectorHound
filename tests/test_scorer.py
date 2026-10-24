@@ -6,7 +6,6 @@ in. These tests verify the metrics actually respond to real input data.
 """
 
 import numpy as np
-import pytest
 
 from pyvectorhound.scorer import QualityScorer
 
@@ -47,9 +46,7 @@ class TestQualityScorerScore:
         assert result["distinctiveness"] == 0.0
 
     def test_score_with_adapter_uses_real_neighbor_embeddings(self):
-        adapter = FakeAdapter(
-            {"1": [1.0, 0.0, 0.0], "2": [0.0, 1.0, 0.0], "3": [0.0, 0.0, 1.0]}
-        )
+        adapter = FakeAdapter({"1": [1.0, 0.0, 0.0], "2": [0.0, 1.0, 0.0], "3": [0.0, 0.0, 1.0]})
         scorer = QualityScorer(adapter=adapter)
 
         result = scorer.score(np.array([1.0, 0.0, 0.0], dtype=np.float32))
@@ -72,9 +69,7 @@ class TestQualityScorerCorpusHealth:
         assert health["trend"] == "unknown"
 
     def test_corpus_health_uses_real_sampled_embeddings(self):
-        adapter = FakeAdapter(
-            {"1": [1.0, 0.0], "2": [0.0, 1.0], "3": [-1.0, 0.0]}, corpus_size=3
-        )
+        adapter = FakeAdapter({"1": [1.0, 0.0], "2": [0.0, 1.0], "3": [-1.0, 0.0]}, corpus_size=3)
         scorer = QualityScorer(adapter=adapter)
 
         health = scorer.corpus_health()
@@ -133,6 +128,6 @@ class TestQualityScorerAnomalyDetection:
         normal = [np.array([1.0, 1.0], dtype=np.float32) for _ in range(5)]
         outlier = np.array([100.0, 100.0], dtype=np.float32)
 
-        result = scorer.detect_anomalies(normal + [outlier])
+        result = scorer.detect_anomalies([*normal, outlier])
 
         assert 5 in result["outliers"]

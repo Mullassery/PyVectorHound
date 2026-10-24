@@ -4,10 +4,8 @@ Enables automatic trace capture from LangChain RAG chains and provides
 drop-in retriever replacements with built-in diagnostics.
 """
 
-from typing import Any, List, Optional, Dict, Callable
 from dataclasses import dataclass
-import numpy as np
-from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -28,7 +26,9 @@ class PyVectorHoundCallbackHandler:
     Automatically captures traces from LangChain chain execution.
     """
 
-    def __init__(self, hound: Optional[Any] = None, config: Optional[LangChainTracingConfig] = None):
+    def __init__(
+        self, hound: Optional[Any] = None, config: Optional[LangChainTracingConfig] = None
+    ):
         """Initialize callback handler.
 
         Args:
@@ -309,9 +309,7 @@ class DiagnosticRetrievalQA:
                 **kwargs,
             )
         except ImportError:
-            raise ImportError(
-                "LangChain not installed. Install with: pip install langchain"
-            )
+            raise ImportError("LangChain not installed. Install with: pip install langchain")
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         """Execute the chain.
@@ -341,9 +339,7 @@ class DiagnosticRetrievalQA:
             return self.chain(*args, **kwargs)
 
 
-def instrument_langchain_chain(
-    chain: Any, hound: Optional[Any] = None
-) -> Any:
+def instrument_langchain_chain(chain: Any, hound: Optional[Any] = None) -> Any:
     """Instrument a LangChain chain for diagnostics.
 
     Args:

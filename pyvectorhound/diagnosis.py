@@ -1,11 +1,12 @@
 """Diagnosis class for retrieval pipeline analysis."""
 
-from typing import List, Dict, Any, Callable, Optional
 from dataclasses import dataclass
+from typing import Any, Callable, Dict, List, Optional
+
 import numpy as np
 
-from pyvectorhound.trend_analysis import TrendAnalyzer
 from pyvectorhound._retry import call_with_backoff as _call_with_backoff
+from pyvectorhound.trend_analysis import TrendAnalyzer
 
 try:
     from pyvectorhound import _core
@@ -18,7 +19,9 @@ def _status_from_threshold(value: float, good: float, moderate: float) -> str:
     return "GOOD" if value > good else "MODERATE" if value > moderate else "WEAK"
 
 
-def _status_from_baseline(value: float, baseline_mean: float, baseline_stddev: float) -> Optional[str]:
+def _status_from_baseline(
+    value: float, baseline_mean: float, baseline_stddev: float
+) -> Optional[str]:
     """Classify `value` by how many standard deviations it sits from a tracked
     baseline, instead of a fixed numeric cutoff. Returns None if the baseline
     has no usable spread (e.g. a single sample), so callers can fall back to
@@ -168,7 +171,9 @@ class Diagnosis:
 
         doc_ids = [str(r["id"]) for r in self.results]
         embeddings_by_id = self.adapter.get_embeddings(doc_ids)
-        vectors = [v.tolist() if hasattr(v, "tolist") else list(v) for v in embeddings_by_id.values()]
+        vectors = [
+            v.tolist() if hasattr(v, "tolist") else list(v) for v in embeddings_by_id.values()
+        ]
 
         if len(vectors) < 2:
             return {
@@ -243,7 +248,9 @@ class Diagnosis:
             "explanation": "Provide expected_docs for ground truth comparison.",
         }
 
-    def _classify(self, metric_name: str, value: float, fixed_good: float, fixed_moderate: float) -> str:
+    def _classify(
+        self, metric_name: str, value: float, fixed_good: float, fixed_moderate: float
+    ) -> str:
         """Classify `value` as GOOD/MODERATE/WEAK.
 
         Uses the tracked baseline for `metric_name` on `self.trend_analyzer`
@@ -519,7 +526,11 @@ class Diagnosis:
             else:
                 faithful_count, contradicted_count = 0, len(doc_texts)
 
-        status = "GOOD" if contradiction_score < 0.2 else "MODERATE" if contradiction_score < 0.5 else "WEAK"
+        status = (
+            "GOOD"
+            if contradiction_score < 0.2
+            else "MODERATE" if contradiction_score < 0.5 else "WEAK"
+        )
 
         return {
             "status": status,
@@ -650,7 +661,10 @@ RECOMMENDATIONS
 
         # Check vector search
         vector_search = self._analysis.get("vector_search", {})
-        if vector_search.get("status") not in (None, "UNKNOWN") and vector_search.get("precision", 0) < 0.7:
+        if (
+            vector_search.get("status") not in (None, "UNKNOWN")
+            and vector_search.get("precision", 0) < 0.7
+        ):
             recs.append(
                 {
                     "priority": "MEDIUM",

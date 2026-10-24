@@ -4,10 +4,9 @@ Provides cross-database comparison, cost analysis, and performance forecasting
 to help optimize infrastructure choices and configurations.
 """
 
-from dataclasses import dataclass, asdict
-from typing import Dict, List, Any, Optional
+from dataclasses import dataclass
 from enum import Enum
-import numpy as np
+from typing import Any, Dict, List, Optional
 
 
 class CostModel(Enum):
@@ -190,9 +189,7 @@ class AdvancedAnalytics:
                 "throughput_qps": perf.throughput_qps,
                 "recall_avg": perf.recall_avg,
                 "monthly_cost": cost,
-                "efficiency_score": self._calculate_efficiency_score(
-                    perf, cost, optimization_goal
-                ),
+                "efficiency_score": self._calculate_efficiency_score(perf, cost, optimization_goal),
             }
 
             comparison["databases"].append(db_info)
@@ -278,7 +275,7 @@ class AdvancedAnalytics:
         cost_model = self._find_cost_model(database_name)
 
         # Assume linear scaling with growth
-        forecast_latency = perf.avg_query_latency_ms * (growth_factor ** 0.5)
+        forecast_latency = perf.avg_query_latency_ms * (growth_factor**0.5)
         forecast_throughput = perf.throughput_qps / growth_factor
         forecast_storage_cost = (
             cost_model.storage_cost_per_gb_month * growth_factor if cost_model else 0.0
@@ -292,9 +289,7 @@ class AdvancedAnalytics:
             ),
             "current_throughput_qps": perf.throughput_qps,
             "forecast_throughput_qps": forecast_throughput,
-            "throughput_decrease_pct": (
-                (1 - forecast_throughput / perf.throughput_qps) * 100
-            ),
+            "throughput_decrease_pct": ((1 - forecast_throughput / perf.throughput_qps) * 100),
             "estimated_storage_cost_monthly": forecast_storage_cost,
         }
 
@@ -327,7 +322,8 @@ class AdvancedAnalytics:
                 if perf.avg_query_latency_ms < current_performance.avg_query_latency_ms:
                     improvement_pct = (
                         (current_performance.avg_query_latency_ms - perf.avg_query_latency_ms)
-                        / current_performance.avg_query_latency_ms * 100
+                        / current_performance.avg_query_latency_ms
+                        * 100
                     )
 
                     recommendations.append(

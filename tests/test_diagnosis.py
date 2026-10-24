@@ -1,7 +1,8 @@
 """Tests for Diagnosis class."""
 
-import pytest
 import numpy as np
+import pytest
+
 from pyvectorhound.diagnosis import Diagnosis
 
 
@@ -59,9 +60,7 @@ class TestDiagnosis:
         results = [{"id": "1", "score": 0.9}, {"id": "2", "score": 0.8}]
         expected = ["1", "3"]
 
-        diagnosis = Diagnosis(
-            query="test", results=results, expected_docs=expected
-        )
+        diagnosis = Diagnosis(query="test", results=results, expected_docs=expected)
 
         diagnosis.analyze()
         metrics = diagnosis.metrics()
@@ -179,7 +178,11 @@ class TestBM25Diagnostics:
     def test_measures_precision_recall_mrr_and_agreement(self):
         diagnosis = Diagnosis(
             query="test",
-            results=[{"id": "a", "score": 0.9}, {"id": "b", "score": 0.8}, {"id": "c", "score": 0.7}],
+            results=[
+                {"id": "a", "score": 0.9},
+                {"id": "b", "score": 0.8},
+                {"id": "c", "score": 0.7},
+            ],
             expected_docs=["a", "c"],
             bm25_results=["a", "c", "x"],
         )
@@ -225,7 +228,11 @@ class TestRerankerDiagnostics:
     def test_perfect_ranking_scores_high(self):
         diagnosis = Diagnosis(
             query="test",
-            results=[{"id": "a", "score": 0.9}, {"id": "b", "score": 0.8}, {"id": "c", "score": 0.7}],
+            results=[
+                {"id": "a", "score": 0.9},
+                {"id": "b", "score": 0.8},
+                {"id": "c", "score": 0.7},
+            ],
             expected_docs=["a", "c"],
             reranker_scores={"a": 0.9, "b": 0.1, "c": 0.8},
         )
@@ -240,7 +247,11 @@ class TestRerankerDiagnostics:
     def test_inverted_ranking_scores_low(self):
         diagnosis = Diagnosis(
             query="test",
-            results=[{"id": "a", "score": 0.9}, {"id": "b", "score": 0.8}, {"id": "c", "score": 0.7}],
+            results=[
+                {"id": "a", "score": 0.9},
+                {"id": "b", "score": 0.8},
+                {"id": "c", "score": 0.7},
+            ],
             expected_docs=["a", "c"],
             reranker_scores={"a": 0.1, "b": 0.9, "c": 0.2},
         )
@@ -292,13 +303,19 @@ class TestFaithfulnessAnalysis:
         diagnosis = Diagnosis(
             query="what is quantum computing",
             results=[{"id": "1", "score": 0.9}, {"id": "2", "score": 0.8}],
-            document_texts={"1": "quantum computers use qubits", "2": "quantum entanglement basics"},
+            document_texts={
+                "1": "quantum computers use qubits",
+                "2": "quantum entanglement basics",
+            },
             llm_judge_fn=judge,
         )
         diagnosis.analyze()
 
         assert captured["query"] == "what is quantum computing"
-        assert set(captured["doc_texts"]) == {"quantum computers use qubits", "quantum entanglement basics"}
+        assert set(captured["doc_texts"]) == {
+            "quantum computers use qubits",
+            "quantum entanglement basics",
+        }
 
         faithfulness = diagnosis.metrics()["faithfulness"]
         assert faithfulness["status"] == "GOOD"

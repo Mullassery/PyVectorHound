@@ -104,9 +104,7 @@ class TimeSeries:
         self.metric_name = metric_name
         self.points: List[TrendPoint] = []
 
-    def add_point(
-        self, value: float, timestamp: Optional[datetime] = None, **tags
-    ) -> None:
+    def add_point(self, value: float, timestamp: Optional[datetime] = None, **tags) -> None:
         """Add data point to series.
 
         Args:
@@ -348,23 +346,15 @@ class TrendAnalyzer:
 
         points = self.series[metric_name].points
         baseline_values = [p.value for p in points if p.timestamp <= baseline_end]
-        current_values = [
-            p.value
-            for p in points
-            if baseline_end < p.timestamp <= current_end
-        ]
+        current_values = [p.value for p in points if baseline_end < p.timestamp <= current_end]
 
         if not baseline_values or not current_values:
             return None
 
         baseline_mean = statistics.mean(baseline_values)
-        baseline_stddev = (
-            statistics.stdev(baseline_values) if len(baseline_values) > 1 else 0.0
-        )
+        baseline_stddev = statistics.stdev(baseline_values) if len(baseline_values) > 1 else 0.0
         current_mean = statistics.mean(current_values)
-        current_stddev = (
-            statistics.stdev(current_values) if len(current_values) > 1 else 0.0
-        )
+        current_stddev = statistics.stdev(current_values) if len(current_values) > 1 else 0.0
 
         drift_magnitude = abs(current_mean - baseline_mean) / max(baseline_stddev, 0.01)
         is_anomaly = drift_magnitude > threshold_stddevs
@@ -372,9 +362,7 @@ class TrendAnalyzer:
         drift_direction = (
             "up"
             if current_mean > baseline_mean
-            else "down"
-            if current_mean < baseline_mean
-            else "stable"
+            else "down" if current_mean < baseline_mean else "stable"
         )
 
         return DriftAnalysis(
@@ -452,9 +440,7 @@ class TrendAnalyzer:
             num_incidents=len(current_values),
         )
 
-    def detect_anomalies(
-        self, metric_name: str, window_days: int = 7
-    ) -> List[AnomalyDetection]:
+    def detect_anomalies(self, metric_name: str, window_days: int = 7) -> List[AnomalyDetection]:
         """Detect anomalies using statistical methods.
 
         Args:

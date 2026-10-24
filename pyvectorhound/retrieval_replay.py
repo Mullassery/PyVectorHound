@@ -5,9 +5,10 @@ retrieval traces with different components (embeddings, chunk sizes, DBs, etc).
 """
 
 import time
-from dataclasses import dataclass, asdict
-from typing import Dict, List, Any, Optional, Callable
+from dataclasses import asdict, dataclass
 from enum import Enum
+from typing import Any, Callable, Dict, List, Optional
+
 import numpy as np
 
 
@@ -91,9 +92,7 @@ class RetrievalReplayer:
         self.baseline_result: Optional[ReplayResult] = None
         self._component_handlers: Dict[ComponentType, Callable] = {}
 
-    def register_component_handler(
-        self, component_type: ComponentType, handler: Callable
-    ) -> None:
+    def register_component_handler(self, component_type: ComponentType, handler: Callable) -> None:
         """Register a handler for component swapping.
 
         Args:
@@ -221,16 +220,12 @@ class RetrievalReplayer:
 
         recall1 = result1.recall_at_k.get(5, 0)
         recall2 = result2.recall_at_k.get(5, 0)
-        recall_improvement = (
-            (recall2 - recall1) / max(recall1, 0.01) * 100 if recall1 > 0 else 0
-        )
+        recall_improvement = (recall2 - recall1) / max(recall1, 0.01) * 100 if recall1 > 0 else 0
 
         precision1 = result1.precision_at_k.get(5, 0)
         precision2 = result2.precision_at_k.get(5, 0)
         precision_improvement = (
-            (precision2 - precision1) / max(precision1, 0.01) * 100
-            if precision1 > 0
-            else 0
+            (precision2 - precision1) / max(precision1, 0.01) * 100 if precision1 > 0 else 0
         )
 
         # Generate recommendation
@@ -295,14 +290,13 @@ class RetrievalReplayer:
         Returns:
             Sorted list of results (highest efficiency first)
         """
+
         def efficiency_score(result: ReplayResult) -> float:
             recall = result.recall_at_k.get(5, 0)
             latency = max(result.latency_ms, 1.0)
             return recall / latency
 
-        return sorted(
-            self.results.values(), key=efficiency_score, reverse=True
-        )
+        return sorted(self.results.values(), key=efficiency_score, reverse=True)
 
     def get_configuration_report(self) -> Dict[str, Any]:
         """Get summary report of all replays.
@@ -318,9 +312,7 @@ class RetrievalReplayer:
         best_by_efficiency = self.rank_configurations_by_efficiency()[0]
 
         avg_latency = np.mean([r.latency_ms for r in self.results.values()])
-        avg_recall = np.mean(
-            [r.recall_at_k.get(5, 0) for r in self.results.values()]
-        )
+        avg_recall = np.mean([r.recall_at_k.get(5, 0) for r in self.results.values()])
 
         return {
             "num_configurations_tested": len(self.results),
@@ -334,7 +326,8 @@ class RetrievalReplayer:
             },
             "best_by_efficiency": {
                 "config_id": best_by_efficiency.config_id,
-                "efficiency": best_by_efficiency.recall_at_k.get(5, 0) / max(best_by_efficiency.latency_ms, 1.0),
+                "efficiency": best_by_efficiency.recall_at_k.get(5, 0)
+                / max(best_by_efficiency.latency_ms, 1.0),
             },
             "average_latency_ms": avg_latency,
             "average_recall_at_5": avg_recall,
@@ -352,16 +345,12 @@ class RetrievalReplayer:
         """
         recall_dict = {}
         for threshold in [1, 5, 10]:
-            relevant = sum(
-                1 for r in results[:threshold] if getattr(r, "is_relevant", False)
-            )
+            relevant = sum(1 for r in results[:threshold] if getattr(r, "is_relevant", False))
             recall_dict[threshold] = relevant / threshold if threshold > 0 else 0
 
         return recall_dict
 
-    def _compute_precision_at_k(
-        self, results: List[Any], k: int = 5
-    ) -> Dict[int, float]:
+    def _compute_precision_at_k(self, results: List[Any], k: int = 5) -> Dict[int, float]:
         """Compute precision@k metrics.
 
         Args:
@@ -373,13 +362,9 @@ class RetrievalReplayer:
         """
         precision_dict = {}
         for threshold in [1, 5, 10]:
-            relevant = sum(
-                1 for r in results[:threshold] if getattr(r, "is_relevant", False)
-            )
+            relevant = sum(1 for r in results[:threshold] if getattr(r, "is_relevant", False))
             total_relevant = sum(1 for r in results if getattr(r, "is_relevant", False))
-            precision_dict[threshold] = (
-                relevant / total_relevant if total_relevant > 0 else 0
-            )
+            precision_dict[threshold] = relevant / total_relevant if total_relevant > 0 else 0
 
         return precision_dict
 

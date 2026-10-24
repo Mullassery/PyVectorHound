@@ -1,6 +1,6 @@
 """REST API server for pyvectorhound - retrieval debugger workflow integration."""
 
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 
@@ -87,12 +87,8 @@ class PyvectorhoundServer:
                 "query": query,
                 "hound_id": hound_id,
                 "top_k": top_k,
-                "findings": (
-                    diagnosis.hunt() if hasattr(diagnosis, 'hunt') else ""
-                ),
-                "metrics": (
-                    diagnosis.metrics() if hasattr(diagnosis, 'metrics') else {}
-                ),
+                "findings": (diagnosis.hunt() if hasattr(diagnosis, "hunt") else ""),
+                "metrics": (diagnosis.metrics() if hasattr(diagnosis, "metrics") else {}),
             }
         except Exception as e:
             return {
@@ -124,9 +120,7 @@ class PyvectorhoundServer:
                 "query": query,
                 "hound_id": hound_id,
                 "recommendations": (
-                    diagnosis.recommendations()
-                    if hasattr(diagnosis, 'recommendations')
-                    else []
+                    diagnosis.recommendations() if hasattr(diagnosis, "recommendations") else []
                 ),
             }
         except Exception as e:
@@ -167,11 +161,9 @@ class PyvectorhoundServer:
 def create_flask_app(server: Optional[PyvectorhoundServer] = None):
     """Create Flask app for REST API."""
     try:
-        from flask import Flask, request, jsonify
+        from flask import Flask, jsonify, request
     except ImportError:
-        raise ImportError(
-            "Flask is required for REST API. Install with: pip install flask"
-        )
+        raise ImportError("Flask is required for REST API. Install with: pip install flask")
 
     app = Flask(__name__)
     srv = server or PyvectorhoundServer()
@@ -193,16 +185,11 @@ def create_flask_app(server: Optional[PyvectorhoundServer] = None):
 
         if not hound_id or not db or not endpoint:
             return (
-                jsonify({
-                    "status": "error",
-                    "message": "hound_id, db, endpoint required"
-                }),
+                jsonify({"status": "error", "message": "hound_id, db, endpoint required"}),
                 400,
             )
 
-        return jsonify(
-            srv.create_hound(hound_id, db, endpoint, index_name, api_key)
-        )
+        return jsonify(srv.create_hound(hound_id, db, endpoint, index_name, api_key))
 
     @app.route("/hounds", methods=["GET"])
     def list_hounds():
@@ -223,9 +210,7 @@ def create_flask_app(server: Optional[PyvectorhoundServer] = None):
                 400,
             )
 
-        return jsonify(
-            srv.diagnose_query(hound_id, query, top_k, expected_docs)
-        )
+        return jsonify(srv.diagnose_query(hound_id, query, top_k, expected_docs))
 
     @app.route("/hounds/<hound_id>/recommendations", methods=["POST"])
     def recommendations(hound_id):

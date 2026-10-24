@@ -4,11 +4,11 @@ Provides distributed tracing, metrics, and logging with support for
 multiple backends (Jaeger, Datadog, New Relic, Honeycomb, etc).
 """
 
-from typing import Optional, Dict, Any, List
-from dataclasses import dataclass
-from enum import Enum
-from datetime import datetime
 import uuid
+from dataclasses import dataclass
+from datetime import datetime
+from enum import Enum
+from typing import Any, Dict, List, Optional
 
 
 class OTelBackend(Enum):
@@ -83,11 +83,13 @@ class TraceSpan:
             name: Event name
             attributes: Optional event attributes
         """
-        self.events.append({
-            "name": name,
-            "timestamp": datetime.utcnow().isoformat(),
-            "attributes": attributes or {},
-        })
+        self.events.append(
+            {
+                "name": name,
+                "timestamp": datetime.utcnow().isoformat(),
+                "attributes": attributes or {},
+            }
+        )
 
     def set_status(self, status: str) -> None:
         """Set span status.
@@ -132,7 +134,9 @@ class TraceSpan:
 class Metric:
     """Lightweight metric representation."""
 
-    def __init__(self, name: str, value: float, unit: str = "", tags: Optional[Dict[str, str]] = None):
+    def __init__(
+        self, name: str, value: float, unit: str = "", tags: Optional[Dict[str, str]] = None
+    ):
         """Initialize metric.
 
         Args:
@@ -338,7 +342,9 @@ class OTelInstrument:
         self._spans.append(span)
         self._exporter.export_span(span)
 
-    def record_metric(self, name: str, value: float, unit: str = "", tags: Optional[Dict[str, str]] = None) -> None:
+    def record_metric(
+        self, name: str, value: float, unit: str = "", tags: Optional[Dict[str, str]] = None
+    ) -> None:
         """Record a metric.
 
         Args:
@@ -365,7 +371,7 @@ class OTelInstrument:
         # Record phase metrics
         for phase_name, phase_metrics in trace.phase_metrics.items():
             self.record_metric(
-                f"retrieval.phase.latency",
+                "retrieval.phase.latency",
                 phase_metrics.duration_ms,
                 "ms",
                 {"phase": phase_name},

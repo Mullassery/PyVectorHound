@@ -4,10 +4,9 @@ Generates LLM-based explanations, ROI estimates, and implementation steps
 for retrieval failures and optimizations.
 """
 
-from dataclasses import dataclass, asdict, field
-from typing import Dict, List, Any, Optional
+from dataclasses import asdict, dataclass, field
 from enum import Enum
-import json
+from typing import Any, Dict, List, Optional
 
 
 class FailureCategory(Enum):
@@ -154,9 +153,7 @@ class RecommendationEngine:
         self._generated_reports[query_id] = report
         return report
 
-    def get_recommendation_summary(
-        self, query_id: str
-    ) -> Optional[Dict[str, Any]]:
+    def get_recommendation_summary(self, query_id: str) -> Optional[Dict[str, Any]]:
         """Get a summary of recommendations for a query.
 
         Args:
@@ -175,20 +172,16 @@ class RecommendationEngine:
             "confidence": report.confidence,
             "executive_summary": report.executive_summary,
             "num_recommendations": len(report.recommendations),
-            "top_recommendation": report.recommendations[0].to_dict()
-            if report.recommendations
-            else None,
-            "estimated_total_effort_hours": sum(
-                r.effort_hours for r in report.recommendations
+            "top_recommendation": (
+                report.recommendations[0].to_dict() if report.recommendations else None
             ),
+            "estimated_total_effort_hours": sum(r.effort_hours for r in report.recommendations),
             "estimated_total_improvement_pct": sum(
                 r.expected_improvement_pct for r in report.recommendations
             ),
         }
 
-    def estimate_roi(
-        self, recommendation: FixRecommendation
-    ) -> Dict[str, Any]:
+    def estimate_roi(self, recommendation: FixRecommendation) -> Dict[str, Any]:
         """Calculate detailed ROI for a recommendation.
 
         Args:
@@ -367,9 +360,7 @@ class RecommendationEngine:
 
         return fixes
 
-    def _generate_embedding_fixes(
-        self, diagnosis: Dict[str, Any]
-    ) -> List[FixRecommendation]:
+    def _generate_embedding_fixes(self, diagnosis: Dict[str, Any]) -> List[FixRecommendation]:
         """Generate fixes for embedding quality issues."""
         fixes = []
 
@@ -398,9 +389,7 @@ class RecommendationEngine:
 
         return fixes
 
-    def _generate_vector_search_fixes(
-        self, diagnosis: Dict[str, Any]
-    ) -> List[FixRecommendation]:
+    def _generate_vector_search_fixes(self, diagnosis: Dict[str, Any]) -> List[FixRecommendation]:
         """Generate fixes for vector search problems."""
         fixes = []
 
@@ -429,9 +418,7 @@ class RecommendationEngine:
 
         return fixes
 
-    def _generate_filtering_fixes(
-        self, diagnosis: Dict[str, Any]
-    ) -> List[FixRecommendation]:
+    def _generate_filtering_fixes(self, diagnosis: Dict[str, Any]) -> List[FixRecommendation]:
         """Generate fixes for metadata filtering issues."""
         fixes = []
 
@@ -457,9 +444,7 @@ class RecommendationEngine:
 
         return fixes
 
-    def _generate_reranking_fixes(
-        self, diagnosis: Dict[str, Any]
-    ) -> List[FixRecommendation]:
+    def _generate_reranking_fixes(self, diagnosis: Dict[str, Any]) -> List[FixRecommendation]:
         """Generate fixes for reranking issues."""
         fixes = []
 
@@ -516,9 +501,7 @@ class RecommendationEngine:
             f"All fixes combined could yield +{total_improvement:.0f}% improvement."
         )
 
-    def _generate_next_steps(
-        self, recommendations: List[FixRecommendation]
-    ) -> List[str]:
+    def _generate_next_steps(self, recommendations: List[FixRecommendation]) -> List[str]:
         """Generate next steps.
 
         Args:
@@ -538,9 +521,7 @@ class RecommendationEngine:
         ]
 
         if len(recommendations) > 1:
-            steps.append(
-                f"5. After success, consider: {recommendations[1].title}"
-            )
+            steps.append(f"5. After success, consider: {recommendations[1].title}")
 
         return steps
 

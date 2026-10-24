@@ -28,9 +28,7 @@ def _require_core() -> None:
         )
 
 
-def rank_and_diversify(
-    results: Sequence[RankingInput], top_k: int
-) -> List[Dict[str, Any]]:
+def rank_and_diversify(results: Sequence[RankingInput], top_k: int) -> List[Dict[str, Any]]:
     """
     Rank `results` by multi-criteria score, then diversify the top `top_k`.
 

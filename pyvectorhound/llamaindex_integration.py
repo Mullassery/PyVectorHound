@@ -4,10 +4,8 @@ Enables automatic trace capture from LlamaIndex query engines and provides
 node postprocessors with built-in diagnostics.
 """
 
-from typing import Any, List, Optional, Dict
 from dataclasses import dataclass
-import numpy as np
-from datetime import datetime
+from typing import Any, List, Optional
 
 
 @dataclass
@@ -28,7 +26,9 @@ class PyVectorHoundInstrumentationCallback:
     Captures trace events from LlamaIndex query execution.
     """
 
-    def __init__(self, hound: Optional[Any] = None, config: Optional[LlamaIndexTracingConfig] = None):
+    def __init__(
+        self, hound: Optional[Any] = None, config: Optional[LlamaIndexTracingConfig] = None
+    ):
         """Initialize instrumentation callback.
 
         Args:
@@ -440,9 +440,7 @@ class DiagnosticQueryEngine:
         return getattr(self.engine, name)
 
 
-def instrument_llamaindex_engine(
-    engine: Any, hound: Optional[Any] = None
-) -> DiagnosticQueryEngine:
+def instrument_llamaindex_engine(engine: Any, hound: Optional[Any] = None) -> DiagnosticQueryEngine:
     """Instrument a LlamaIndex query engine for diagnostics.
 
     Args:

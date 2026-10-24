@@ -4,12 +4,13 @@ Provides latency metrics (p50, p95, p99), embedding quality comparison
 across databases, and storage efficiency analysis.
 """
 
-import time
 import statistics
-from dataclasses import dataclass, asdict
-from typing import Dict, List, Any, Optional, Tuple
-import numpy as np
+import time
+from dataclasses import asdict, dataclass
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+import numpy as np
 
 
 @dataclass
@@ -111,9 +112,7 @@ class PerformanceBenchmark:
         self._snapshots: List[PerformanceSnapshot] = []
         self._baseline: Optional[PerformanceSnapshot] = None
 
-    def measure_query_latency(
-        self, query_fn, num_iterations: int = 100
-    ) -> LatencyMetrics:
+    def measure_query_latency(self, query_fn, num_iterations: int = 100) -> LatencyMetrics:
         """Measure latency of query operation.
 
         Args:
@@ -157,9 +156,7 @@ class PerformanceBenchmark:
 
         return self._compute_latency_metrics(latencies)
 
-    def measure_end_to_end_latency(
-        self, e2e_fn, num_iterations: int = 50
-    ) -> LatencyMetrics:
+    def measure_end_to_end_latency(self, e2e_fn, num_iterations: int = 50) -> LatencyMetrics:
         """Measure end-to-end query latency.
 
         Args:
@@ -239,8 +236,7 @@ class PerformanceBenchmark:
                     quality_b=config_b.get("quality_metrics", {}),
                     latency_a_ms=config_a.get("latency_ms", 0.0),
                     latency_b_ms=config_b.get("latency_ms", 0.0),
-                    recall_diff=config_a.get("recall", 0.0)
-                    - config_b.get("recall", 0.0),
+                    recall_diff=config_a.get("recall", 0.0) - config_b.get("recall", 0.0),
                     cost_per_1m_tokens_a=config_a.get("cost_per_1m", 0.0),
                     cost_per_1m_tokens_b=config_b.get("cost_per_1m", 0.0),
                 )
@@ -348,9 +344,7 @@ class PerformanceBenchmark:
         # Consider >5% increase as regression
         threshold = 5.0
         if any(
-            abs(regression[key]) > threshold
-            for key in regression
-            if key.endswith("_increase_pct")
+            abs(regression[key]) > threshold for key in regression if key.endswith("_increase_pct")
         ):
             regression["has_regression"] = True
 

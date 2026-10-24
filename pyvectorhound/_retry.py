@@ -40,7 +40,7 @@ def call_with_backoff(
     for attempt in range(max_retries + 1):
         try:
             return fn(*args, **kwargs)
-        except Exception as exc:  # noqa: BLE001 - caller's fn, any exception is a valid retry signal
+        except Exception as exc:
             last_exc = exc
             if attempt == max_retries:
                 break

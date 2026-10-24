@@ -1,44 +1,40 @@
 """Tests for v0.5 Enterprise Integration features."""
 
-import pytest
 import numpy as np
-from datetime import datetime
-
-# Database adapters
-from pyvectorhound.db_adapters import (
-    DatabaseType,
-    DatabaseConfig,
-    MockDatabaseAdapter,
-    SearchResult,
-    AdapterFactory,
-)
-
-# LangChain integration
-from pyvectorhound.langchain_integration import (
-    PyVectorHoundCallbackHandler,
-    InstrumentedRetriever,
-)
-
-# LlamaIndex integration
-from pyvectorhound.llamaindex_integration import (
-    PyVectorHoundInstrumentationCallback,
-    DiagnosticVectorIndexRetriever,
-)
-
-# OpenTelemetry
-from pyvectorhound.otel_integration import (
-    OTelConfig,
-    OTelBackend,
-    OTelInstrument,
-    TraceSpan,
-    Metric,
-)
 
 # Advanced Analytics
 from pyvectorhound.advanced_analytics import (
     AdvancedAnalytics,
-    CostModel,
-    OptimizationRecommendation,
+)
+
+# Database adapters
+from pyvectorhound.db_adapters import (
+    AdapterFactory,
+    DatabaseConfig,
+    DatabaseType,
+    MockDatabaseAdapter,
+    SearchResult,
+)
+
+# LangChain integration
+from pyvectorhound.langchain_integration import (
+    InstrumentedRetriever,
+    PyVectorHoundCallbackHandler,
+)
+
+# LlamaIndex integration
+from pyvectorhound.llamaindex_integration import (
+    DiagnosticVectorIndexRetriever,
+    PyVectorHoundInstrumentationCallback,
+)
+
+# OpenTelemetry
+from pyvectorhound.otel_integration import (
+    Metric,
+    OTelBackend,
+    OTelConfig,
+    OTelInstrument,
+    TraceSpan,
 )
 
 
@@ -197,12 +193,8 @@ class TestAdvancedAnalytics:
         analytics = AdvancedAnalytics()
 
         # Register test data
-        analytics.register_performance_data(
-            "Qdrant", 50.0, 85.0, 120.0, 1000, 0.85
-        )
-        analytics.register_performance_data(
-            "Pinecone", 45.0, 80.0, 115.0, 1200, 0.88
-        )
+        analytics.register_performance_data("Qdrant", 50.0, 85.0, 120.0, 1000, 0.85)
+        analytics.register_performance_data("Pinecone", 45.0, 80.0, 115.0, 1200, 0.88)
 
         # Compare
         comparison = analytics.compare_databases(
@@ -224,6 +216,7 @@ class TestLangChainIntegration:
 
     def test_instrumented_retriever_creation(self):
         """Test creating instrumented retriever."""
+
         # Mock retriever
         class MockRetriever:
             def get_relevant_documents(self, query: str):
@@ -244,6 +237,7 @@ class TestLlamaIndexIntegration:
 
     def test_diagnostic_retriever_creation(self):
         """Test creating diagnostic retriever."""
+
         # Mock retriever
         class MockRetriever:
             def retrieve(self, query_str: str):
@@ -291,15 +285,9 @@ class TestIntegration:
         analytics = AdvancedAnalytics()
 
         # Register performance data for multiple databases
-        analytics.register_performance_data(
-            "Qdrant", 50.0, 85.0, 120.0, 1000, 0.85
-        )
-        analytics.register_performance_data(
-            "Pinecone", 45.0, 80.0, 115.0, 1200, 0.88
-        )
-        analytics.register_performance_data(
-            "Weaviate", 60.0, 95.0, 130.0, 800, 0.82
-        )
+        analytics.register_performance_data("Qdrant", 50.0, 85.0, 120.0, 1000, 0.85)
+        analytics.register_performance_data("Pinecone", 45.0, 80.0, 115.0, 1200, 0.88)
+        analytics.register_performance_data("Weaviate", 60.0, 95.0, 130.0, 800, 0.82)
 
         # Compare databases
         comparison = analytics.compare_databases(

@@ -86,7 +86,7 @@ def cmd_check(args: argparse.Namespace) -> int:
     try:
         proc = _run([path, "--version"], os.environ.copy(), 30)
         version = (proc.stdout or proc.stderr).strip() or None
-    except Exception:  # noqa: BLE001 - a version probe must never be fatal
+    except Exception:
         version = None
     return _emit(
         {"backend": BACKEND, "available": True, "path": path, "version": version},
@@ -180,9 +180,7 @@ def build_parser() -> argparse.ArgumentParser:
     def common(p):
         p.add_argument("--root", default=".", help="Project root (default: .).")
         p.add_argument("--out", default="graphify-out", help="Output directory.")
-        p.add_argument(
-            "--timeout", type=int, default=1800, help="Seconds before aborting."
-        )
+        p.add_argument("--timeout", type=int, default=1800, help="Seconds before aborting.")
         p.add_argument(
             "--require",
             action="store_true",

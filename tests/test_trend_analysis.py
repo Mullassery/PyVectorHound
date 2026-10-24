@@ -1,14 +1,14 @@
 """Tests for trend analysis module."""
 
-import pytest
 from datetime import datetime, timedelta
+
 from pyvectorhound.trend_analysis import (
-    TrendAnalyzer,
-    TimeSeries,
-    TrendPoint,
+    AnomalyDetection,
     DriftAnalysis,
     RegressionAnalysis,
-    AnomalyDetection,
+    TimeSeries,
+    TrendAnalyzer,
+    TrendPoint,
 )
 
 
@@ -18,9 +18,7 @@ class TestTrendPoint:
     def test_trend_point_creation(self):
         """Test creating trend point."""
         timestamp = datetime.utcnow()
-        point = TrendPoint(
-            timestamp=timestamp, value=0.92, metric_name="embedding_isotropy"
-        )
+        point = TrendPoint(timestamp=timestamp, value=0.92, metric_name="embedding_isotropy")
         assert point.value == 0.92
         assert point.metric_name == "embedding_isotropy"
 
@@ -232,9 +230,7 @@ class TestTrendAnalyzer:
     def test_set_baseline(self):
         """Test setting baseline statistics."""
         analyzer = TrendAnalyzer()
-        analyzer.set_baseline(
-            "embedding_isotropy", {"mean": 0.90, "stddev": 0.02}
-        )
+        analyzer.set_baseline("embedding_isotropy", {"mean": 0.90, "stddev": 0.02})
         assert "embedding_isotropy" in analyzer._baseline_stats
 
     def test_detect_drift(self):

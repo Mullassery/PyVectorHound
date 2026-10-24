@@ -2,12 +2,11 @@
 
 import json
 import sys
-from typing import Optional, List
+from typing import List, Optional
 
 import numpy as np
 
 from .hound import Hound
-from .comparison import ModelComparison
 
 
 class CLIInterface:
@@ -114,8 +113,8 @@ class CLIInterface:
                 "query": query,
                 "hound_id": hound_id,
                 "top_k": top_k,
-                "findings": diagnosis.hunt() if hasattr(diagnosis, 'hunt') else "Analysis complete",
-                "metrics": diagnosis.metrics() if hasattr(diagnosis, 'metrics') else {},
+                "findings": diagnosis.hunt() if hasattr(diagnosis, "hunt") else "Analysis complete",
+                "metrics": diagnosis.metrics() if hasattr(diagnosis, "metrics") else {},
             }
         except Exception as e:
             return {
@@ -156,9 +155,7 @@ class CLIInterface:
                 "query": query,
                 "hound_id": hound_id,
                 "recommendations": (
-                    diagnosis.recommendations()
-                    if hasattr(diagnosis, 'recommendations')
-                    else []
+                    diagnosis.recommendations() if hasattr(diagnosis, "recommendations") else []
                 ),
             }
         except Exception as e:
@@ -176,12 +173,14 @@ class CLIInterface:
         """
         hounds_info = []
         for hound_id, hound in self.hounds.items():
-            hounds_info.append({
-                "id": hound_id,
-                "db": hound.db,
-                "endpoint": hound.endpoint,
-                "index_name": hound.index_name,
-            })
+            hounds_info.append(
+                {
+                    "id": hound_id,
+                    "db": hound.db,
+                    "endpoint": hound.endpoint,
+                    "index_name": hound.index_name,
+                }
+            )
 
         return {
             "status": "success",
@@ -203,9 +202,7 @@ def main():
     try:
         if command == "create-hound":
             if len(sys.argv) < 5:
-                print(json.dumps({
-                    "error": "Missing hound_id, db, or endpoint"
-                }))
+                print(json.dumps({"error": "Missing hound_id, db, or endpoint"}))
                 sys.exit(1)
 
             hound_id = sys.argv[2]
@@ -214,16 +211,12 @@ def main():
             index_name = sys.argv[5] if len(sys.argv) > 5 else "documents"
             api_key = sys.argv[6] if len(sys.argv) > 6 else None
 
-            result = cli.create_hound(
-                hound_id, db, endpoint, index_name, api_key
-            )
+            result = cli.create_hound(hound_id, db, endpoint, index_name, api_key)
             print(json.dumps(result))
 
         elif command == "diagnose":
             if len(sys.argv) < 4:
-                print(json.dumps({
-                    "error": "Missing hound_id or query"
-                }))
+                print(json.dumps({"error": "Missing hound_id or query"}))
                 sys.exit(1)
 
             hound_id = sys.argv[2]
@@ -231,16 +224,12 @@ def main():
             top_k = int(sys.argv[4]) if len(sys.argv) > 4 else 5
             expected_docs = sys.argv[5] if len(sys.argv) > 5 else None
 
-            result = cli.diagnose_query(
-                hound_id, query, top_k, expected_docs
-            )
+            result = cli.diagnose_query(hound_id, query, top_k, expected_docs)
             print(json.dumps(result))
 
         elif command == "recommendations":
             if len(sys.argv) < 4:
-                print(json.dumps({
-                    "error": "Missing hound_id or query"
-                }))
+                print(json.dumps({"error": "Missing hound_id or query"}))
                 sys.exit(1)
 
             hound_id = sys.argv[2]
@@ -252,7 +241,9 @@ def main():
 
         elif command == "report":
             if len(sys.argv) < 5:
-                print(json.dumps({"error": "Usage: report <hound_id> <query> <output.html> [top_k]"}))
+                print(
+                    json.dumps({"error": "Usage: report <hound_id> <query> <output.html> [top_k]"})
+                )
                 sys.exit(1)
             hound_id = sys.argv[2]
             query = sys.argv[3]

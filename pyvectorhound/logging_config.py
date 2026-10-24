@@ -9,7 +9,7 @@ import os
 import sys
 from typing import Optional
 
-__all__ = ["get_logger", "configure_logging"]
+__all__ = ["configure_logging", "get_logger"]
 
 
 def configure_logging(
@@ -31,8 +31,7 @@ def configure_logging(
 
     if format_style == "detailed":
         log_format = (
-            "%(asctime)s - %(name)s - %(levelname)s - "
-            "%(filename)s:%(lineno)d - %(message)s"
+            "%(asctime)s - %(name)s - %(levelname)s - " "%(filename)s:%(lineno)d - %(message)s"
         )
     else:
         log_format = "%(levelname)s - %(name)s - %(message)s"

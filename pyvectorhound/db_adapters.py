@@ -6,10 +6,11 @@ seamless swapping in replay mode.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Dict, List, Any, Optional, Tuple
-from enum import Enum
-import numpy as np
 from datetime import datetime
+from enum import Enum
+from typing import Any, ClassVar, Dict, List, Optional
+
+import numpy as np
 
 
 class DatabaseType(Enum):
@@ -245,9 +246,7 @@ class DatabaseAdapter(ABC):
         pass
 
     @abstractmethod
-    def delete(
-        self, ids: List[str], index_name: Optional[str] = None
-    ) -> bool:
+    def delete(self, ids: List[str], index_name: Optional[str] = None) -> bool:
         """Delete vectors by ID.
 
         Args:
@@ -339,7 +338,7 @@ class DatabaseAdapter(ABC):
 class AdapterFactory:
     """Factory for creating database adapters."""
 
-    _adapters: Dict[DatabaseType, type] = {}
+    _adapters: ClassVar[Dict[DatabaseType, type]] = {}
 
     @classmethod
     def register(cls, db_type: DatabaseType, adapter_class: type) -> None:
@@ -488,9 +487,7 @@ class MockDatabaseAdapter(DatabaseAdapter):
             }
         return True
 
-    def delete(
-        self, ids: List[str], index_name: Optional[str] = None
-    ) -> bool:
+    def delete(self, ids: List[str], index_name: Optional[str] = None) -> bool:
         """Mock delete."""
         for doc_id in ids:
             self._vectors.pop(doc_id, None)
@@ -527,9 +524,7 @@ class MockDatabaseAdapter(DatabaseAdapter):
         """Mock update config."""
         return True
 
-    def _matches_filters(
-        self, metadata: Dict[str, Any], filters: Dict[str, Any]
-    ) -> bool:
+    def _matches_filters(self, metadata: Dict[str, Any], filters: Dict[str, Any]) -> bool:
         """Check if metadata matches filters.
 
         Args:

@@ -1,11 +1,10 @@
 """Tests for recommendations module."""
 
-import pytest
 from pyvectorhound.recommendations import (
-    RecommendationEngine,
-    FixRecommendation,
     DiagnosticReport,
     FailureCategory,
+    FixRecommendation,
+    RecommendationEngine,
 )
 
 
@@ -118,9 +117,7 @@ class TestRecommendationEngine:
             "embedding_quality_score": 0.9,
         }
 
-        report = engine.analyze_failure(
-            "query_1", "test query", diagnosis
-        )
+        report = engine.analyze_failure("query_1", "test query", diagnosis)
 
         assert report.query_id == "query_1"
         assert "chunking_problems" in report.primary_failures
@@ -135,9 +132,7 @@ class TestRecommendationEngine:
             "chunking_issues": False,
         }
 
-        report = engine.analyze_failure(
-            "query_1", "test query", diagnosis
-        )
+        report = engine.analyze_failure("query_1", "test query", diagnosis)
 
         assert report.query_id == "query_1"
         assert "embedding_quality" in report.primary_failures
@@ -151,9 +146,7 @@ class TestRecommendationEngine:
             "embedding_quality_score": 0.9,
         }
 
-        report = engine.analyze_failure(
-            "query_1", "test query", diagnosis
-        )
+        report = engine.analyze_failure("query_1", "test query", diagnosis)
 
         assert "metadata_filtering" in report.primary_failures
 
@@ -314,9 +307,7 @@ class TestRecommendationEngine:
             "total_time_ms": 150,
         }
 
-        report = engine.analyze_failure(
-            "query_1", "test query", diagnosis, trace_analysis
-        )
+        report = engine.analyze_failure("query_1", "test query", diagnosis, trace_analysis)
 
         assert report.query_id == "query_1"
         assert len(report.primary_failures) > 0

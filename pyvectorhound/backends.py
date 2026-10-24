@@ -7,7 +7,6 @@ Supports multiple vector database platforms with a unified interface:
 - Memory: In-process memory backend (for testing)
 """
 
-import logging
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 

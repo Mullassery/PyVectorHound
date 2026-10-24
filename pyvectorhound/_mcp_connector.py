@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 try:
     from statguardian import BaseMCPConnector
 except ImportError:
+
     class BaseMCPConnector(ABC):
         def __init__(
             self,
@@ -108,7 +109,6 @@ class VectorRetrieval:
         self.mcp_connector: Optional[Any] = None
 
     def start_mcp_connector(self, port: int = 8782) -> str:
-        from pyvectorhound._mcp_tools import PyVectorHoundMCPHandler, PyVectorHoundMCPTools
         self.mcp_connector = _MCPVectorConnector(hound=self, port=port)
         return self.mcp_connector.start_mcp_connector()
 
@@ -124,8 +124,10 @@ class _MCPVectorConnector(BaseMCPConnector):
 
     def get_mcp_tools(self) -> Dict[str, Any]:
         from pyvectorhound._mcp_tools import PyVectorHoundMCPTools
+
         return PyVectorHoundMCPTools.get_tools()
 
     def get_tool_handlers(self) -> Any:
         from pyvectorhound._mcp_tools import PyVectorHoundMCPHandler
+
         return PyVectorHoundMCPHandler(self.hound)

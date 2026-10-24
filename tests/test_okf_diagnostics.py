@@ -6,7 +6,6 @@ from pathlib import Path
 import pytest
 
 from pyvectorhound.okf_diagnostics import (
-    OKFDiagnosticDocument,
     OKFDiagnosticKnowledgeBase,
 )
 
@@ -34,10 +33,10 @@ def populated_kb(temp_kb):
                 "strategy": "Split to 400-token chunks",
                 "effort_hours": 2,
                 "expected_improvement": 0.27,
-                "roi": "10-50x"
+                "roi": "10-50x",
             }
         ],
-        context={"corpus_size": "1GB", "actual_improvement": 0.28}
+        context={"corpus_size": "1GB", "actual_improvement": 0.28},
     )
 
     # Record embedding quality failure
@@ -51,10 +50,10 @@ def populated_kb(temp_kb):
                 "strategy": "Switch to domain-specific embedding",
                 "effort_hours": 4,
                 "expected_improvement": 0.35,
-                "roi": "20-40x"
+                "roi": "20-40x",
             }
         ],
-        context={"domain": "legal", "actual_improvement": 0.30}
+        context={"domain": "legal", "actual_improvement": 0.30},
     )
 
     # Record another chunking failure
@@ -68,10 +67,10 @@ def populated_kb(temp_kb):
                 "strategy": "Split to 400-token chunks",
                 "effort_hours": 2,
                 "expected_improvement": 0.25,
-                "roi": "10-50x"
+                "roi": "10-50x",
             }
         ],
-        context={"corpus_size": "2GB", "actual_improvement": 0.26}
+        context={"corpus_size": "2GB", "actual_improvement": 0.26},
     )
 
     return kb
@@ -119,7 +118,7 @@ class TestOKFDiagnosticKBOperations:
             root_cause="Test Failure",
             confidence=0.85,
             failure_types=["Test"],
-            recommendations=[{"strategy": "Test", "effort_hours": 1}]
+            recommendations=[{"strategy": "Test", "effort_hours": 1}],
         )
 
         assert path.exists()
@@ -187,7 +186,7 @@ class TestOKFPatternExtraction:
         common_patterns = populated_kb.extract_patterns(min_frequency=2)
 
         # Should NOT include patterns with less than 2 occurrences
-        rare_patterns = populated_kb.extract_patterns(min_frequency=100)
+        populated_kb.extract_patterns(min_frequency=100)
 
         if common_patterns:
             # Common patterns should have fewer/equal count than all patterns
@@ -227,14 +226,11 @@ class TestOKFRecommendationEnhancement:
             {
                 "strategy": "Split to 400-token chunks",
                 "effort_hours": 2,
-                "expected_improvement": 0.25
+                "expected_improvement": 0.25,
             }
         ]
 
-        enhanced = populated_kb.generate_enhanced_recommendations(
-            "Chunking Problems",
-            initial_recs
-        )
+        enhanced = populated_kb.generate_enhanced_recommendations("Chunking Problems", initial_recs)
 
         assert len(enhanced) > 0
         rec = enhanced[0]
@@ -247,19 +243,12 @@ class TestOKFRecommendationEnhancement:
             {
                 "strategy": "Split to 400-token chunks",
                 "effort_hours": 2,
-                "expected_improvement": 0.25
+                "expected_improvement": 0.25,
             },
-            {
-                "strategy": "Nonexistent Strategy",
-                "effort_hours": 1,
-                "expected_improvement": 0.50
-            }
+            {"strategy": "Nonexistent Strategy", "effort_hours": 1, "expected_improvement": 0.50},
         ]
 
-        enhanced = populated_kb.generate_enhanced_recommendations(
-            "Chunking Problems",
-            initial_recs
-        )
+        enhanced = populated_kb.generate_enhanced_recommendations("Chunking Problems", initial_recs)
 
         # Should be sorted with known strategies first
         if enhanced[0]["historical_success_rate"] is not None:
@@ -279,7 +268,7 @@ class TestOKFReload:
             root_cause="Test",
             confidence=0.8,
             failure_types=["Test"],
-            recommendations=[]
+            recommendations=[],
         )
 
         temp_kb.reload()

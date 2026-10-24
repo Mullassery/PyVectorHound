@@ -1,15 +1,16 @@
 """Tests for performance benchmarking module."""
 
-import pytest
 import time
+from datetime import datetime
+
 import numpy as np
-from datetime import datetime, timedelta
+
 from pyvectorhound.benchmarking import (
-    PerformanceBenchmark,
+    EmbeddingComparison,
     LatencyMetrics,
+    PerformanceBenchmark,
     PerformanceSnapshot,
     StorageMetrics,
-    EmbeddingComparison,
 )
 
 
@@ -254,15 +255,11 @@ class TestPerformanceBenchmark:
         db_query = LatencyMetrics(30, 28, 60, 70, 5, 80, 12, 100)
         total = LatencyMetrics(90, 85, 160, 180, 20, 200, 30, 100)
 
-        benchmark.capture_snapshot(
-            query_latency, embedding_latency, db_query, total
-        )
+        benchmark.capture_snapshot(query_latency, embedding_latency, db_query, total)
 
         # Add degraded snapshot (10% worse)
         degraded_total = LatencyMetrics(99, 93, 176, 198, 22, 220, 33, 100)
-        benchmark.capture_snapshot(
-            query_latency, embedding_latency, db_query, degraded_total
-        )
+        benchmark.capture_snapshot(query_latency, embedding_latency, db_query, degraded_total)
 
         regression = benchmark.detect_regression()
         assert regression is not None
@@ -277,9 +274,7 @@ class TestPerformanceBenchmark:
         db_query = LatencyMetrics(30, 28, 60, 70, 5, 80, 12, 100)
         total = LatencyMetrics(90, 85, 160, 180, 20, 200, 30, 100)
 
-        benchmark.capture_snapshot(
-            query_latency, embedding_latency, db_query, total
-        )
+        benchmark.capture_snapshot(query_latency, embedding_latency, db_query, total)
 
         report = benchmark.get_performance_report()
         assert "latest_snapshot" in report

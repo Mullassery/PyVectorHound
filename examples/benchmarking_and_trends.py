@@ -7,12 +7,12 @@ Demonstrates how to use PyVectorHound's v0.3 features for:
 - Comparing embedding models and databases
 """
 
+import time
+
 from pyvectorhound import (
-    Hound,
     PerformanceBenchmark,
     TrendAnalyzer,
 )
-import time
 
 
 def example_performance_benchmarking():
@@ -47,8 +47,7 @@ def example_performance_benchmarking():
         time.sleep(0.0012)  # 1.2ms
 
     db_comparison = benchmark.compare_databases(
-        {"qdrant": query_qdrant, "chroma": query_chroma},
-        num_iterations=50
+        {"qdrant": query_qdrant, "chroma": query_chroma}, num_iterations=50
     )
 
     for db_name, metrics in db_comparison.items():
@@ -60,21 +59,13 @@ def example_performance_benchmarking():
     print("\nComparing embedding models...")
     model_configs = {
         "openai-3-small": {
-            "quality_metrics": {
-                "isotropy": 0.92,
-                "coverage": 0.88,
-                "distinctiveness": 0.85
-            },
+            "quality_metrics": {"isotropy": 0.92, "coverage": 0.88, "distinctiveness": 0.85},
             "latency_ms": 15.2,
             "recall": 0.87,
             "cost_per_1m": 0.02,
         },
         "cohere-v3": {
-            "quality_metrics": {
-                "isotropy": 0.89,
-                "coverage": 0.90,
-                "distinctiveness": 0.83
-            },
+            "quality_metrics": {"isotropy": 0.89, "coverage": 0.90, "distinctiveness": 0.83},
             "latency_ms": 22.5,
             "recall": 0.84,
             "cost_per_1m": 0.03,
@@ -86,7 +77,9 @@ def example_performance_benchmarking():
         print(f"  {comparison.model_a} vs {comparison.model_b}:")
         print(f"    Recall difference: {comparison.recall_diff:+.2%}")
         print(f"    Latency: {comparison.latency_a_ms:.1f}ms vs {comparison.latency_b_ms:.1f}ms")
-        print(f"    Cost: ${comparison.cost_per_1m_tokens_a} vs ${comparison.cost_per_1m_tokens_b} per 1M tokens")
+        print(
+            f"    Cost: ${comparison.cost_per_1m_tokens_a} vs ${comparison.cost_per_1m_tokens_b} per 1M tokens"
+        )
 
 
 def example_trend_analysis():
@@ -113,11 +106,13 @@ def example_trend_analysis():
     # Detect drift
     drift = analyzer.detect_drift("embedding_isotropy")
     if drift and drift.is_anomaly:
-        print(f"\n  DRIFT DETECTED!")
+        print("\n  DRIFT DETECTED!")
         print(f"  Metric: {drift.metric_name}")
         print(f"  Baseline: {drift.baseline_mean:.3f} ± {drift.baseline_stddev:.4f}")
         print(f"  Current:  {drift.current_mean:.3f} ± {drift.current_stddev:.4f}")
-        print(f"  Magnitude: {drift.drift_magnitude:.2f}σ (confidence: {drift.confidence:.1%})")
+        print(
+            f"  Magnitude: {drift.drift_magnitude:.2f} sigma (confidence: {drift.confidence:.1%})"
+        )
 
     # Example 2: Detect performance regression
     print("\n\nTracking query latency...")
@@ -132,7 +127,7 @@ def example_trend_analysis():
 
     regression = analyzer.detect_regression("query_latency_ms")
     if regression and regression.is_regression:
-        print(f"\n  REGRESSION DETECTED!")
+        print("\n  REGRESSION DETECTED!")
         print(f"  Metric: {regression.metric_name}")
         print(f"  Change: {regression.change_pct:+.1f}%")
         print(f"  Severity: {regression.severity}")
@@ -158,8 +153,10 @@ def example_trend_analysis():
     if anomalies:
         print(f"  Found {len(anomalies)} anomalies:")
         for anomaly in anomalies:
-            print(f"    - {anomaly.anomaly_type.upper()}: value={anomaly.value:.2f} " +
-                  f"(expected: {anomaly.expected_range[0]:.2f}-{anomaly.expected_range[1]:.2f})")
+            print(
+                f"    - {anomaly.anomaly_type.upper()}: value={anomaly.value:.2f} "
+                + f"(expected: {anomaly.expected_range[0]:.2f}-{anomaly.expected_range[1]:.2f})"
+            )
 
 
 def example_using_hound_api():

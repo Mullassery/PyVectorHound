@@ -1,6 +1,7 @@
 """Embedding quality scoring and monitoring."""
 
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
+
 import numpy as np
 
 from pyvectorhound.diagnosis import _status_from_baseline, _status_from_threshold
@@ -222,9 +223,7 @@ class QualityScorer:
             "outliers": outliers,
         }
 
-    def trend_analysis(
-        self, baseline_date: str, current_date: str
-    ) -> Dict[str, Any]:
+    def trend_analysis(self, baseline_date: str, current_date: str) -> Dict[str, Any]:
         """
         Analyze quality trends over time.
 

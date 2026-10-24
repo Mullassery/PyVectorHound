@@ -23,20 +23,23 @@ def render_html(diagnosis: Any) -> str:
         status = component.get("status", "UNKNOWN")
         explanation = component.get("explanation", "")
         rows.append(
-            "<tr><td>%s</td><td class=\"%s\">%s</td><td>%s</td></tr>"
+            '<tr><td>%s</td><td class="%s">%s</td><td>%s</td></tr>'
             % (_safe(name), _safe(status.lower()), _safe(status), _safe(explanation))
         )
 
-    rec_items = "".join(
-        "<li><strong>%s</strong> — %s (impact: %s, cost: %s)</li>"
-        % (
-            _safe(rec.get("priority", "")),
-            _safe(rec.get("action", "")),
-            _safe(rec.get("impact", "")),
-            _safe(rec.get("cost", "")),
+    rec_items = (
+        "".join(
+            "<li><strong>%s</strong> — %s (impact: %s, cost: %s)</li>"
+            % (
+                _safe(rec.get("priority", "")),
+                _safe(rec.get("action", "")),
+                _safe(rec.get("impact", "")),
+                _safe(rec.get("cost", "")),
+            )
+            for rec in recs
         )
-        for rec in recs
-    ) or "<li>No recommendations.</li>"
+        or "<li>No recommendations.</li>"
+    )
 
     return """<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">

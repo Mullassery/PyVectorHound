@@ -67,8 +67,12 @@ class TestMilvusAdapter:
         embeddings = adapter.get_embeddings(["doc_1", "doc_3"])
 
         assert set(embeddings.keys()) == {"doc_1", "doc_3"}
-        np.testing.assert_array_equal(embeddings["doc_1"], np.array([1.0, 2.0, 3.0], dtype=np.float32))
-        np.testing.assert_array_equal(embeddings["doc_3"], np.array([7.0, 8.0, 9.0], dtype=np.float32))
+        np.testing.assert_array_equal(
+            embeddings["doc_1"], np.array([1.0, 2.0, 3.0], dtype=np.float32)
+        )
+        np.testing.assert_array_equal(
+            embeddings["doc_3"], np.array([7.0, 8.0, 9.0], dtype=np.float32)
+        )
         assert embeddings["doc_1"].dtype == np.float32
 
     def test_get_embeddings_skips_unknown_ids_instead_of_fabricating_data(self):
@@ -90,7 +94,11 @@ class TestMilvusAdapter:
     def test_get_embeddings_uses_configured_vector_field_name(self):
         class RenamedFieldClient(FakeMilvusClient):
             def get(self, collection_name, ids, output_fields=None):
-                return [{"id": doc_id, "embedding": self._records[doc_id]} for doc_id in ids if doc_id in self._records]
+                return [
+                    {"id": doc_id, "embedding": self._records[doc_id]}
+                    for doc_id in ids
+                    if doc_id in self._records
+                ]
 
         adapter = MilvusAdapter(
             endpoint="http://localhost:19530", index_name="docs", vector_field="embedding"

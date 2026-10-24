@@ -2,7 +2,8 @@
 
 import re
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional, Tuple
+from typing import Any, Dict, List, Optional
+
 import numpy as np
 from pydantic import SecretStr
 
@@ -22,9 +23,7 @@ class VectorDB(ABC):
         pass
 
     @abstractmethod
-    def search(
-        self, query_embedding: np.ndarray, top_k: int = 5
-    ) -> List[Dict[str, Any]]:
+    def search(self, query_embedding: np.ndarray, top_k: int = 5) -> List[Dict[str, Any]]:
         """
         Search for similar embeddings.
 
@@ -73,15 +72,11 @@ class QdrantAdapter(VectorDB):
                 self.client = QdrantClient(url=self.endpoint, api_key=self.api_key)
             else:
                 host, port = self.endpoint.split(":")
-                self.client = QdrantClient(
-                    host=host, port=int(port), api_key=self.api_key
-                )
+                self.client = QdrantClient(host=host, port=int(port), api_key=self.api_key)
         except ImportError:
             raise ImportError("qdrant-client not installed. Run: pip install pyvectorhound[qdrant]")
 
-    def search(
-        self, query_embedding: np.ndarray, top_k: int = 5
-    ) -> List[Dict[str, Any]]:
+    def search(self, query_embedding: np.ndarray, top_k: int = 5) -> List[Dict[str, Any]]:
         """Search in Qdrant."""
         if self.client is None:
             self.connect()
@@ -99,9 +94,11 @@ class QdrantAdapter(VectorDB):
                 "score": result.score,
                 # Real per-document embedding when Qdrant returns one;
                 # falls back to the query embedding only if the point has none.
-                "embedding": np.array(result.vector, dtype=np.float32)
-                if getattr(result, "vector", None) is not None
-                else query_embedding,
+                "embedding": (
+                    np.array(result.vector, dtype=np.float32)
+                    if getattr(result, "vector", None) is not None
+                    else query_embedding
+                ),
             }
             for result in results
         ]
@@ -113,9 +110,7 @@ class QdrantAdapter(VectorDB):
 
         embeddings = {}
         for doc_id in doc_ids:
-            point = self.client.retrieve(
-                collection_name=self.index_name, ids=[int(doc_id)]
-            )
+            point = self.client.retrieve(collection_name=self.index_name, ids=[int(doc_id)])
             if point:
                 embeddings[doc_id] = np.array(point[0].vector)
 
@@ -160,9 +155,7 @@ class ChromaAdapter(VectorDB):
         except ImportError:
             raise ImportError("chromadb not installed. Run: pip install pyvectorhound[chroma]")
 
-    def search(
-        self, query_embedding: np.ndarray, top_k: int = 5
-    ) -> List[Dict[str, Any]]:
+    def search(self, query_embedding: np.ndarray, top_k: int = 5) -> List[Dict[str, Any]]:
         """Search in Chroma."""
         if self.collection is None:
             self.connect()
@@ -249,9 +242,7 @@ class MilvusAdapter(VectorDB):
         except ImportError:
             raise ImportError("pymilvus not installed. Run: pip install pyvectorhound[milvus]")
 
-    def search(
-        self, query_embedding: np.ndarray, top_k: int = 5
-    ) -> List[Dict[str, Any]]:
+    def search(self, query_embedding: np.ndarray, top_k: int = 5) -> List[Dict[str, Any]]:
         """Search in Milvus."""
         if self.client is None:
             self.connect()
@@ -341,8 +332,7 @@ class PostgresVectorAdapter(VectorDB):
         self.connection = None
         if not _IDENTIFIER_RE.match(index_name):
             raise ValueError(
-                f"Invalid table name {index_name!r}: must match "
-                f"{_IDENTIFIER_RE.pattern}"
+                f"Invalid table name {index_name!r}: must match " f"{_IDENTIFIER_RE.pattern}"
             )
         self.index_name = index_name
         self.username = username
@@ -363,15 +353,11 @@ class PostgresVectorAdapter(VectorDB):
                 database=self.database,
             )
         except ImportError:
-            raise ImportError(
-                "psycopg2 not installed. Run: pip install pyvectorhound[postgres]"
-            )
+            raise ImportError("psycopg2 not installed. Run: pip install pyvectorhound[postgres]")
         except Exception as e:
             raise ConnectionError(f"Failed to connect to PostgreSQL: {e}")
 
-    def search(
-        self, query_embedding: np.ndarray, top_k: int = 5
-    ) -> List[Dict[str, Any]]:
+    def search(self, query_embedding: np.ndarray, top_k: int = 5) -> List[Dict[str, Any]]:
         """Search in PostgreSQL using pgvector similarity."""
         if self.connection is None:
             self.connect()
@@ -402,9 +388,11 @@ class PostgresVectorAdapter(VectorDB):
                         "score": similarity,
                         # Use the real per-document embedding fetched above,
                         # not the query embedding.
-                        "embedding": np.array(embedding, dtype=np.float32)
-                        if embedding is not None
-                        else query_embedding,
+                        "embedding": (
+                            np.array(embedding, dtype=np.float32)
+                            if embedding is not None
+                            else query_embedding
+                        ),
                     }
                 )
 
@@ -422,7 +410,9 @@ class PostgresVectorAdapter(VectorDB):
 
         try:
             placeholders = ",".join(["%s"] * len(doc_ids))
-            query_str = f"SELECT id, embedding FROM `{self.index_name}` WHERE id IN ({placeholders})"
+            query_str = (
+                f"SELECT id, embedding FROM `{self.index_name}` WHERE id IN ({placeholders})"
+            )
 
             cursor.execute(query_str, doc_ids)
 
@@ -479,18 +469,21 @@ class WeaviateAdapter(VectorDB):
 
             self.client = weaviate.Client(self.endpoint)
         except ImportError:
-            raise ImportError("weaviate-client not installed. Run: pip install pyvectorhound[weaviate]")
+            raise ImportError(
+                "weaviate-client not installed. Run: pip install pyvectorhound[weaviate]"
+            )
 
-    def search(
-        self, query_embedding: np.ndarray, top_k: int = 5
-    ) -> List[Dict[str, Any]]:
+    def search(self, query_embedding: np.ndarray, top_k: int = 5) -> List[Dict[str, Any]]:
         """Search in Weaviate."""
         if self.client is None:
             self.connect()
 
-        results = self.client.query.get(self.index_name, ["_additional {distance vector}"]).with_near_vector(
-            {"vector": query_embedding.tolist()}
-        ).with_limit(top_k).do()
+        results = (
+            self.client.query.get(self.index_name, ["_additional {distance vector}"])
+            .with_near_vector({"vector": query_embedding.tolist()})
+            .with_limit(top_k)
+            .do()
+        )
 
         output = []
         for result in results["data"]["Get"][self.index_name]:
@@ -527,11 +520,7 @@ class WeaviateAdapter(VectorDB):
         if self.client is None:
             self.connect()
 
-        result = (
-            self.client.query.aggregate(self.index_name)
-            .with_meta_count()
-            .do()
-        )
+        result = self.client.query.aggregate(self.index_name).with_meta_count().do()
 
         return result["data"]["Aggregate"][self.index_name][0]["meta"]["count"]
 
@@ -551,8 +540,6 @@ def get_adapter(db: str, endpoint: str, index_name: str, **kwargs: Any) -> Vecto
     }
 
     if db not in adapters:
-        raise ValueError(
-            f"Unsupported database: {db}. Supported: {list(set(adapters.values()))}"
-        )
+        raise ValueError(f"Unsupported database: {db}. Supported: {list(set(adapters.values()))}")
 
     return adapters[db](endpoint=endpoint, index_name=index_name, **kwargs)

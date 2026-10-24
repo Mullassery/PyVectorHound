@@ -75,7 +75,9 @@ metrics = diagnosis.metrics()
 print("Embedding component:", metrics["embedding"]["status"])
 print("Vector search component:", metrics["vector_search"]["status"])
 print("BM25 component:", metrics["bm25"]["status"], "(no BM25 subsystem in this codebase)")
-print("Reranker component:", metrics["reranker"]["status"], "(no reranker-score input on Diagnosis)")
+print(
+    "Reranker component:", metrics["reranker"]["status"], "(no reranker-score input on Diagnosis)"
+)
 
 # Root cause, in plain English
 print(f"\nRoot cause: {diagnosis.root_cause()}")

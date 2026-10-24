@@ -1,6 +1,6 @@
 """MCP 2.0 Tools for PyVectorHound - Vector Search & Retrieval"""
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 
 class PyVectorHoundMCPTools:
@@ -108,7 +108,10 @@ class PyVectorHoundMCPTools:
                     "properties": {
                         "index_name": {"type": "string"},
                         "num_clusters": {"type": "integer"},
-                        "clustering_algorithm": {"type": "string", "enum": ["kmeans", "hdbscan", "agglomerative"]},
+                        "clustering_algorithm": {
+                            "type": "string",
+                            "enum": ["kmeans", "hdbscan", "agglomerative"],
+                        },
                     },
                     "required": ["index_name"],
                 },
@@ -182,9 +185,9 @@ class PyVectorHoundMCPHandler:
     def __init__(self, hound: Any):
         self.hound = hound
 
-    async def create_vector_index(self, index_name: str,
-                                 embedding_model: str = "all-MiniLM-L6-v2",
-                                 vector_dim: int = 384) -> Dict[str, Any]:
+    async def create_vector_index(
+        self, index_name: str, embedding_model: str = "all-MiniLM-L6-v2", vector_dim: int = 384
+    ) -> Dict[str, Any]:
         return {
             "index_name": index_name,
             "embedding_model": embedding_model,
@@ -192,8 +195,9 @@ class PyVectorHoundMCPHandler:
             "status": "created",
         }
 
-    async def index_documents(self, index_name: str, documents: List[Dict],
-                             batch_size: int = 100) -> Dict[str, Any]:
+    async def index_documents(
+        self, index_name: str, documents: List[Dict], batch_size: int = 100
+    ) -> Dict[str, Any]:
         return {
             "index_name": index_name,
             "documents_indexed": len(documents),
@@ -201,9 +205,9 @@ class PyVectorHoundMCPHandler:
             "status": "success",
         }
 
-    async def semantic_search(self, index_name: str, query: str,
-                             top_k: int = 10,
-                             threshold: float = 0.0) -> Dict[str, Any]:
+    async def semantic_search(
+        self, index_name: str, query: str, top_k: int = 10, threshold: float = 0.0
+    ) -> Dict[str, Any]:
         return {
             "index_name": index_name,
             "query": query,
@@ -217,25 +221,25 @@ class PyVectorHoundMCPHandler:
             ],
         }
 
-    async def similarity_search(self, index_name: str, reference_doc_id: str,
-                               top_k: int = 10) -> Dict[str, Any]:
+    async def similarity_search(
+        self, index_name: str, reference_doc_id: str, top_k: int = 10
+    ) -> Dict[str, Any]:
         return {
             "reference_doc_id": reference_doc_id,
             "similar_docs": [
-                {"doc_id": f"doc_{i}", "similarity": 0.95 - i * 0.05}
-                for i in range(top_k)
+                {"doc_id": f"doc_{i}", "similarity": 0.95 - i * 0.05} for i in range(top_k)
             ],
         }
 
-    async def hybrid_search(self, index_name: str, query: str, top_k: int = 10,
-                           semantic_weight: float = 0.7) -> Dict[str, Any]:
+    async def hybrid_search(
+        self, index_name: str, query: str, top_k: int = 10, semantic_weight: float = 0.7
+    ) -> Dict[str, Any]:
         return {
             "index_name": index_name,
             "query": query,
             "semantic_weight": semantic_weight,
             "results": [
-                {"doc_id": f"doc_{i}", "hybrid_score": 0.95 - i * 0.05}
-                for i in range(top_k)
+                {"doc_id": f"doc_{i}", "hybrid_score": 0.95 - i * 0.05} for i in range(top_k)
             ],
         }
 
@@ -255,26 +259,22 @@ class PyVectorHoundMCPHandler:
             "index_name": index_name,
             "requested": len(doc_ids),
             "retrieved": len(doc_ids),
-            "documents": [
-                {"id": doc_id, "content": f"Content for {doc_id}"}
-                for doc_id in doc_ids
-            ],
+            "documents": [{"id": doc_id, "content": f"Content for {doc_id}"} for doc_id in doc_ids],
         }
 
-    async def cluster_documents(self, index_name: str, num_clusters: int = 5,
-                               clustering_algorithm: str = "kmeans") -> Dict[str, Any]:
+    async def cluster_documents(
+        self, index_name: str, num_clusters: int = 5, clustering_algorithm: str = "kmeans"
+    ) -> Dict[str, Any]:
         return {
             "index_name": index_name,
             "num_clusters": num_clusters,
             "algorithm": clustering_algorithm,
-            "clusters": [
-                {"cluster_id": i, "doc_count": 100 - i * 10}
-                for i in range(num_clusters)
-            ],
+            "clusters": [{"cluster_id": i, "doc_count": 100 - i * 10} for i in range(num_clusters)],
         }
 
-    async def rerank_results(self, query: str, results: List[Dict],
-                            reranker_model: str = "cross-encoder") -> Dict[str, Any]:
+    async def rerank_results(
+        self, query: str, results: List[Dict], reranker_model: str = "cross-encoder"
+    ) -> Dict[str, Any]:
         return {
             "query": query,
             "original_count": len(results),

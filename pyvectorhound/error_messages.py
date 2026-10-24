@@ -1,14 +1,16 @@
 """User-friendly error messages for RAG diagnostics."""
 
+from typing import Optional
+
 
 class DiagnosticError:
     """Diagnostic error with troubleshooting steps."""
-    
-    def __init__(self, title: str, message: str, troubleshoot: list = None):
+
+    def __init__(self, title: str, message: str, troubleshoot: Optional[list] = None):
         self.title = title
         self.message = message
         self.troubleshoot = troubleshoot or []
-    
+
     def format(self) -> str:
         """Format for display."""
         lines = [f"\n❌ {self.title}\n", f"   {self.message}\n"]
@@ -17,7 +19,7 @@ class DiagnosticError:
             for i, step in enumerate(self.troubleshoot, 1):
                 lines.append(f"      {i}. {step}")
         return "\n".join(lines)
-    
+
     def __str__(self) -> str:
         return self.format()
 
@@ -32,7 +34,7 @@ VECTOR_DB_UNREACHABLE = DiagnosticError(
         "Test connection: telnet localhost 6333 (for Qdrant)",
         "Check firewall rules if using remote database",
         "Verify credentials are correct for authenticated databases",
-    ]
+    ],
 )
 
 EMBEDDING_MODEL_UNAVAILABLE = DiagnosticError(
@@ -43,7 +45,7 @@ EMBEDDING_MODEL_UNAVAILABLE = DiagnosticError(
         "For local embeddings, ensure sentence-transformers is installed",
         "Check HuggingFace model cache: ~/.cache/huggingface/",
         "Try downloading model: model = SentenceTransformer('model-name')",
-    ]
+    ],
 )
 
 # Query errors
@@ -55,7 +57,7 @@ MALFORMED_QUERY = DiagnosticError(
         "Remove control characters and null bytes",
         "Ensure query is valid UTF-8 encoding",
         "Example valid query: 'What does this document say about pricing?'",
-    ]
+    ],
 )
 
 EMBEDDING_QUALITY_LOW = DiagnosticError(
@@ -66,7 +68,7 @@ EMBEDDING_QUALITY_LOW = DiagnosticError(
         "Try different model: 'text-embedding-3-large' vs 'small'",
         "Verify documents are properly formatted (not HTML, corrupted text)",
         "Check if using different embedding models for query vs documents",
-    ]
+    ],
 )
 
 # Retrieval errors
@@ -79,7 +81,7 @@ NO_RELEVANT_RESULTS = DiagnosticError(
         "Verify document collection is not empty",
         "Check if query is too different from documents",
         "Try rephrasing query in different words",
-    ]
+    ],
 )
 
 RERANKER_FAILURE = DiagnosticError(
@@ -90,7 +92,7 @@ RERANKER_FAILURE = DiagnosticError(
         "Check that candidates are non-empty strings",
         "Try with fewer candidates if out of memory",
         "Ensure query and candidates are compatible encoding",
-    ]
+    ],
 )
 
 # Analysis errors
@@ -102,7 +104,7 @@ INSUFFICIENT_SAMPLES = DiagnosticError(
         "Add more documents to the vector database",
         "Check if database query is filtering out results",
         "Ensure at least 5-10 results for meaningful analysis",
-    ]
+    ],
 )
 
 
@@ -116,7 +118,7 @@ def get_connection_error(endpoint: str, reason: str) -> DiagnosticError:
             "Check endpoint is correct and accessible",
             "Verify credentials if authentication is required",
             "Check firewall and network settings",
-        ]
+        ],
     )
 
 
@@ -130,5 +132,5 @@ def get_similarity_error(actual: float, threshold: float) -> DiagnosticError:
             "Review documents - may not contain relevant information",
             "Try rephrasing your query",
             "Check if using appropriate embedding model for domain",
-        ]
+        ],
     )

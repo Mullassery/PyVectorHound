@@ -1,15 +1,16 @@
 """Tests for retrieval replay module."""
 
-import pytest
 from datetime import datetime
+
 import numpy as np
-from pyvectorhound.retrieval_tracing import RetrievalTrace, SearchResult
+
 from pyvectorhound.retrieval_replay import (
-    RetrievalReplayer,
+    ComponentType,
     ReplayConfiguration,
     ReplayResult,
-    ComponentType,
+    RetrievalReplayer,
 )
+from pyvectorhound.retrieval_tracing import RetrievalTrace, SearchResult
 
 
 class TestReplayConfiguration:
@@ -71,9 +72,7 @@ class TestRetrievalReplayer:
     def test_create_configuration(self):
         """Test creating configuration."""
         replayer = RetrievalReplayer()
-        config = replayer.create_configuration(
-            "config_1", {ComponentType.CHUNK_SIZE: 500}
-        )
+        config = replayer.create_configuration("config_1", {ComponentType.CHUNK_SIZE: 500})
         assert config.config_id == "config_1"
         assert "config_1" in replayer.configurations
 
@@ -90,19 +89,13 @@ class TestRetrievalReplayer:
             embedding_model="openai",
             embedding_latency_ms=15.0,
             vector_search_results=[
-                SearchResult(
-                    doc_id="doc_1", content="content", score=0.9, is_relevant=True
-                ),
-                SearchResult(
-                    doc_id="doc_2", content="content", score=0.8, is_relevant=False
-                ),
+                SearchResult(doc_id="doc_1", content="content", score=0.9, is_relevant=True),
+                SearchResult(doc_id="doc_2", content="content", score=0.8, is_relevant=False),
             ],
         )
 
         # Create configuration
-        replayer.create_configuration(
-            "config_1", {ComponentType.CHUNK_SIZE: 500}
-        )
+        replayer.create_configuration("config_1", {ComponentType.CHUNK_SIZE: 500})
 
         # Register a dummy handler
         def dummy_handler(trace, component, results):
@@ -128,9 +121,7 @@ class TestRetrievalReplayer:
             embedding_model="openai",
             embedding_latency_ms=15.0,
             vector_search_results=[
-                SearchResult(
-                    doc_id="doc_1", content="content", score=0.9, is_relevant=True
-                )
+                SearchResult(doc_id="doc_1", content="content", score=0.9, is_relevant=True)
             ],
         )
 
@@ -299,15 +290,9 @@ class TestRetrievalReplayer:
         replayer = RetrievalReplayer()
 
         results = [
-            SearchResult(
-                doc_id="doc_1", content="content", score=0.9, is_relevant=True
-            ),
-            SearchResult(
-                doc_id="doc_2", content="content", score=0.8, is_relevant=True
-            ),
-            SearchResult(
-                doc_id="doc_3", content="content", score=0.7, is_relevant=False
-            ),
+            SearchResult(doc_id="doc_1", content="content", score=0.9, is_relevant=True),
+            SearchResult(doc_id="doc_2", content="content", score=0.8, is_relevant=True),
+            SearchResult(doc_id="doc_3", content="content", score=0.7, is_relevant=False),
         ]
 
         recall = replayer._compute_recall_at_k(results)
@@ -320,12 +305,8 @@ class TestRetrievalReplayer:
         replayer = RetrievalReplayer()
 
         results = [
-            SearchResult(
-                doc_id="doc_1", content="content", score=0.9, is_relevant=True
-            ),
-            SearchResult(
-                doc_id="doc_2", content="content", score=0.8, is_relevant=True
-            ),
+            SearchResult(doc_id="doc_1", content="content", score=0.9, is_relevant=True),
+            SearchResult(doc_id="doc_2", content="content", score=0.8, is_relevant=True),
         ]
 
         ndcg = replayer._compute_ndcg(results)
@@ -337,12 +318,8 @@ class TestRetrievalReplayer:
         replayer = RetrievalReplayer()
 
         results = [
-            SearchResult(
-                doc_id="doc_1", content="content", score=0.9, is_relevant=False
-            ),
-            SearchResult(
-                doc_id="doc_2", content="content", score=0.8, is_relevant=True
-            ),
+            SearchResult(doc_id="doc_1", content="content", score=0.9, is_relevant=False),
+            SearchResult(doc_id="doc_2", content="content", score=0.8, is_relevant=True),
         ]
 
         mrr = replayer._compute_mrr(results)
