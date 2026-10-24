@@ -4,6 +4,10 @@ All notable changes to PyVectorHound are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- Upgraded `pyo3` 0.23 → 0.29 and `numpy` 0.23 → 0.29; `cargo audit` is
+  now clean and runs as a CI gate.
+
 ### Added
 - Release workflow (`.github/workflows/release.yml`) using `maturin-action`:
   Linux x86_64/aarch64 (manylinux_2_17), macOS arm64/x86_64, and Windows

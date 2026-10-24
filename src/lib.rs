@@ -64,7 +64,7 @@ fn py_compute_retrieval_metrics(
     retrieved: Vec<usize>,
     relevant: Vec<usize>,
     top_k: usize,
-) -> PyResult<PyObject> {
+) -> PyResult<Py<PyAny>> {
     let metrics = compute_retrieval_metrics(&retrieved, &relevant, top_k);
 
     let dict = PyDict::new(py);
@@ -100,7 +100,7 @@ fn py_compute_quality_score(embeddings: Vec<Vec<f32>>) -> PyResult<f32> {
 /// "min": float, "max": float}`. `values` holds signed 8-bit integers
 /// (-128..=127); `scale`/`offset` are required to dequantize.
 #[pyfunction]
-fn py_quantize_vector(py: Python, values: Vec<f32>) -> PyResult<PyObject> {
+fn py_quantize_vector(py: Python, values: Vec<f32>) -> PyResult<Py<PyAny>> {
     let (quantized, params) = quantize(&values);
 
     let dict = PyDict::new(py);
@@ -132,7 +132,7 @@ fn py_dequantize_vector(values: Vec<i8>, scale: f32, offset: f32) -> PyResult<Ve
 /// where each entry of `params` has the same shape as
 /// `py_quantize_vector`'s return dict.
 #[pyfunction]
-fn py_quantize_batch(py: Python, vectors: Vec<Vec<f32>>) -> PyResult<PyObject> {
+fn py_quantize_batch(py: Python, vectors: Vec<Vec<f32>>) -> PyResult<Py<PyAny>> {
     let (values, params) = quantize_batch(&vectors);
 
     let values_list = PyList::empty(py);
@@ -182,7 +182,7 @@ fn py_dequantize_batch(
 
 /// Build a Python list of dicts from ranked results:
 /// `{"document_id", "relevance_score", "rank", "diversity_score", "ranking_factors"}`.
-fn ranked_results_to_pylist<'py>(py: Python<'py>, ranked: &[RankedResult]) -> PyResult<PyObject> {
+fn ranked_results_to_pylist<'py>(py: Python<'py>, ranked: &[RankedResult]) -> PyResult<Py<PyAny>> {
     let list = PyList::empty(py);
     for r in ranked {
         let dict = PyDict::new(py);
@@ -212,7 +212,7 @@ fn py_rank_and_diversify_results(
     py: Python,
     results: Vec<(String, HashMap<String, f32>, Vec<f32>)>,
     top_k: usize,
-) -> PyResult<PyObject> {
+) -> PyResult<Py<PyAny>> {
     let retrieval_results: Vec<RetrievalResult> = results
         .into_iter()
         .map(|(doc_id, scores, embedding)| RetrievalResult {
@@ -243,7 +243,7 @@ fn py_compute_reranker_metrics(
     diversity_scores: Vec<f32>,
     relevant_docs: Vec<String>,
     k: usize,
-) -> PyResult<PyObject> {
+) -> PyResult<Py<PyAny>> {
     if ranked_document_ids.len() != diversity_scores.len() {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "ranked_document_ids and diversity_scores must have the same length",

