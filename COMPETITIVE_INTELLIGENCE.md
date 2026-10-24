@@ -56,6 +56,8 @@ starts, and record the decision in the PR or changelog.
 
 ## OSS gap analysis — 2026-10-24
 
+**What matters most here:** answer-layer evaluation and real judges. Stopping at retrieval means teams still need Ragas/TruLens, and a bare judge callback makes faithfulness depend on user code; add generation metrics and bundled judge providers.
+
 Scope: Compared PyVectorHound's retrieval-stage diagnostics against four LLM/RAG evaluation frameworks, focusing on whether a team debugging bad retrieval would choose a diagnostic tool or a full eval platform.
 
 ### Comparable OSS projects
