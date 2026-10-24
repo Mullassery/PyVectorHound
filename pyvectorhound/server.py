@@ -237,4 +237,9 @@ def run_server(host: str = "127.0.0.1", port: int = 8006):
 
 
 if __name__ == "__main__":
-    run_server()
+    import os
+
+    run_server(
+        host=os.environ.get("PYVECTORHOUND_HOST", "127.0.0.1"),
+        port=int(os.environ.get("PYVECTORHOUND_PORT", "8006")),
+    )

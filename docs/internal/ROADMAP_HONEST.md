@@ -62,10 +62,11 @@ those are stated as missing.
 - **A generated API reference** (`docs/API.md` or similar): does not
   exist. `docs/GUIDE.md` referenced it before this pass; the reference
   has been removed and replaced with a pointer to source docstrings.
-- **Docker/Kubernetes deployment artifacts**: `DEPLOYMENT.md` describes
-  these at length, but there is no `Dockerfile`, `docker-compose.yml`, or
-  k8s manifest anywhere in this repo, and the doc was never validated
-  against this repo's contents (see Technical Debt below).
+- ~~**Docker/Kubernetes deployment artifacts**~~ **Resolved:** real
+  `Dockerfile`, `docker-compose.yml`, `.dockerignore`, and
+  `deploy/k8s.yaml` now exist for the Flask server. They have not been
+  exercised in this environment (no Docker/K8s available), so treat them as
+  reviewed-but-unverified.
 
 ## Bugs found and fixed in this pass
 
@@ -186,12 +187,10 @@ those are stated as missing.
    version (2.32.5, fixed in 2.33.0) but is not blocked by a ceiling —
    it's a routine "run pip install --upgrade" gap, not a config bug.
 
-9. **`DEPLOYMENT.md` (673 lines) was never validated against this repo.**
-   Describes Docker/Kubernetes/cloud deployment for a project that ships
-   no Dockerfile or k8s manifests. A disclaimer banner has been added
-   pointing this out; the document itself has not been rewritten or
-   fact-checked line-by-line (that's a dedicated-session-sized task given
-   its length).
+9. **`DEPLOYMENT.md` (673 lines) is only partially validated.** Docker,
+   Compose, and Kubernetes manifests now exist and the banner reflects that,
+   but the document itself has not been fact-checked line-by-line (that's a
+   dedicated-session-sized task given its length).
 
 10. ~~**Python 3.8 support is claimed but never tested.**~~ **Resolved
     (2026-10-20):** the declared floor is now `requires-python = ">=3.9"`

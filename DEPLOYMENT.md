@@ -1,9 +1,9 @@
 # PyVectorHound Production Deployment Guide
 
-> **Unverified, 2026-09-20:** this document was not written or tested
-> against this repository's actual contents. There is no `Dockerfile`,
-> `docker-compose.yml`, or Kubernetes manifest anywhere in this repo, and
-> nothing below has been run or validated as part of this audit.
+> **Partially verified, 2026-10-24:** real `Dockerfile`, `docker-compose.yml`,
+> `.dockerignore`, and `deploy/k8s.yaml` now exist for the Flask server. They
+> have been syntax-reviewed but not built/run in this environment (no Docker
+> or Kubernetes available), so treat the commands below as reviewed-but-unverified.
 > PyVectorHound is a pip-installed Python/Rust library, not a service —
 > most users will never need to "deploy" it at all; you `pip install` it
 > into whatever process already talks to your vector database. The one

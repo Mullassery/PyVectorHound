@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pyvectorhound
+  labels:
+    app: pyvectorhound
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pyvectorhound
+  template:
+    metadata:
+      labels:
+        app: pyvectorhound
+    spec:
+      containers:
+        - name: pyvectorhound
+          image: pyvectorhound:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8006
+          env:
+            - name: PYVECTORHOUND_HOST
+              value: "0.0.0.0"
+            - name: PYVECTORHOUND_PORT
+              value: "8006"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pyvectorhound
+  labels:
+    app: pyvectorhound
+spec:
+  selector:
+    app: pyvectorhound
+  ports:
+    - name: http
+      port: 8006
+      targetPort: http

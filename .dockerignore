@@ -1,0 +1,17 @@
+.git
+.venv
+.venv-*
+target
+dist
+htmlcov
+.pytest_cache
+.mypy_cache
+.ruff_cache
+__pycache__
+*.pyc
+*.so
+*.abi3.so
+docs
+examples
+tests
+tools

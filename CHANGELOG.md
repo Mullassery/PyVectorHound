@@ -4,6 +4,10 @@ All notable changes to PyVectorHound are documented in this file.
 
 ## [Unreleased]
 
+### Added
+- Real Docker, Compose, and Kubernetes manifests for the Flask REST server
+  (`Dockerfile`, `docker-compose.yml`, `deploy/k8s.yaml`).
+
 ### Changed
 - Upgraded `pyo3` 0.23 → 0.29 and `numpy` 0.23 → 0.29; `cargo audit` is
   now clean and runs as a CI gate.

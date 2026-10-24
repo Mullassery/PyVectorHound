@@ -1,0 +1,9 @@
+services:
+  pyvectorhound:
+    build: .
+    ports:
+      - "8006:8006"
+    environment:
+      PYVECTORHOUND_HOST: 0.0.0.0
+      PYVECTORHOUND_PORT: "8006"
+    restart: unless-stopped
