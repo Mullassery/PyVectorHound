@@ -53,7 +53,7 @@ checked for the Rust dependency tree (`pyo3`, `numpy`, `serde`,
 `serde_json` in `Cargo.toml`) and should be run with network access
 before a release.
 
-See `ROADMAP_HONEST.md` for the full technical debt list, including
+See `docs/internal/ROADMAP_HONEST.md` for the full technical debt list, including
 several currently-open, unmerged Dependabot PRs.
 
 ## Security Updates

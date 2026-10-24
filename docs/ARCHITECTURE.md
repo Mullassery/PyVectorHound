@@ -3,7 +3,7 @@
 This document describes the real, current structure of this codebase — not
 an aspirational design. If something below looks unimplemented or
 unverified, it's stated as such rather than glossed over. See
-[ROADMAP_HONEST.md](../ROADMAP_HONEST.md) for the full status/gap list.
+[internal/ROADMAP_HONEST.md](internal/ROADMAP_HONEST.md) for the full status/gap list.
 
 ## What this is
 
@@ -84,7 +84,7 @@ coverage):
 
 Present in the package but **not wired into the main import path, not
 tested, and with dependencies that aren't declared in `pyproject.toml`**
-(see ROADMAP_HONEST.md for the full list):
+(see internal/ROADMAP_HONEST.md for the full list):
 
 - `server.py` — a `Flask`-based REST API wrapper (`Flask` is not a declared
   dependency anywhere in `pyproject.toml`). Zero tests, zero references

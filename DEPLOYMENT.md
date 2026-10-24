@@ -10,7 +10,7 @@
 > real service-like component (`pyvectorhound/server.py`, a Flask REST
 > wrapper) is itself untested, unused elsewhere in the repo, and depends
 > on `Flask`, which isn't declared anywhere in `pyproject.toml` (see
-> ROADMAP_HONEST.md). Treat everything below as an unverified draft, not
+> docs/internal/ROADMAP_HONEST.md). Treat everything below as an unverified draft, not
 > a guide anyone has actually followed.
 
 Complete guide for deploying PyVectorHound in production environments.

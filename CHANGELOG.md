@@ -133,14 +133,14 @@ All notable changes to PyVectorHound are documented in this file.
   `RetrievalRanker` bindings added above — meaning
   `rank_and_diversify()`/`compute_reranker_metrics()` raised
   `AttributeError` under that shadowing with no warning. Deleted the stale
-  artifacts; see `TECHNICAL_DEBT.md` TD-0001 and the new CONTRIBUTING.md
+  artifacts; see `docs/internal/TECHNICAL_DEBT.md` TD-0001 and the new CONTRIBUTING.md
   note on always running `maturin develop` after Rust changes.
 - **(2026-10-05 audit) `RetrievalRanker::diversify()` didn't re-sort its
   output by the diversity-adjusted score**, returning results in
   pre-diversity selection order instead — contradicting its own documented
   contract and able to place a penalized near-duplicate ahead of a
   higher-scoring, unpenalized result. Fixed in `src/retrieval_ranking.rs`;
-  see `TECHNICAL_DEBT.md` TD-0002 for a worked repro and the new
+  see `docs/internal/TECHNICAL_DEBT.md` TD-0002 for a worked repro and the new
   order-asserting regression tests (Rust + Python) added alongside the fix.
 
 ### Removed
@@ -170,7 +170,7 @@ All notable changes to PyVectorHound are documented in this file.
 - Added `.github/dependabot.yml` cargo ecosystem entry (was missing;
   pip and github-actions were already covered).
 - Added `.github/pull_request_template.md` (was missing).
-- Added `ROADMAP_HONEST.md` with a full, dated technical debt and gap
+- Added `docs/internal/ROADMAP_HONEST.md` with a full, dated technical debt and gap
   list.
 
 ## [1.5.0]

@@ -6,7 +6,6 @@
 [![PyPI](https://img.shields.io/pypi/v/pyvectorhound)](https://pypi.org/project/pyvectorhound/)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-blue)](https://www.python.org)
 [![Tests](https://github.com/Mullassery/PyVectorHound/actions/workflows/ci.yml/badge.svg)](https://github.com/Mullassery/PyVectorHound/actions/workflows/ci.yml)
-[![Graphify](https://img.shields.io/badge/Graphify-knowledge%20graph-blue)](https://github.com/Graphify-Labs/graphify)
 
 > **Not to be confused with [PyAgentHound](https://github.com/Mullassery/PyAgentHound):** PyVectorHound diagnoses RAG retrieval failures; PyAgentHound traces and root-causes AI agent execution failures.
 
@@ -113,7 +112,7 @@ you already have and tells you, with real computed metrics, what's wrong.
 
 The 2026-10-19 implementation audit — including the BM25/reranker diagnostics
 work, verification results, and remaining gaps — is recorded in
-[`AUDIT_FINDINGS.md`](AUDIT_FINDINGS.md).
+[`docs/internal/AUDIT_FINDINGS.md`](docs/internal/AUDIT_FINDINGS.md).
 
 ## Project status
 
@@ -121,7 +120,7 @@ work, verification results, and remaining gaps — is recorded in
 above. If a component doesn't have enough input to measure honestly (no `adapter`, fewer
 than 2 documents with embeddings, or no `expected_docs`), it's reported as `UNKNOWN` with an
 explanation of what to supply — never a made-up number. See
-[`ROADMAP_HONEST.md`](ROADMAP_HONEST.md) for a plain list of what's not built, what's
+[`docs/internal/ROADMAP_HONEST.md`](docs/internal/ROADMAP_HONEST.md) for a plain list of what's not built, what's
 untested, and known technical debt. Changes are tracked in [CHANGELOG.md](CHANGELOG.md).
 
 ## Installation
@@ -427,7 +426,7 @@ retrieve-then-generate pipeline end to end.
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — architecture.
 - [docs/GUIDE.md](docs/GUIDE.md) — usage guide.
-- [ROADMAP_HONEST.md](ROADMAP_HONEST.md) — what's not built, what's untested, and known
+- [docs/internal/ROADMAP_HONEST.md](docs/internal/ROADMAP_HONEST.md) — what's not built, what's untested, and known
   technical debt.
 - [CHANGELOG.md](CHANGELOG.md) — release history.
 - [examples/](examples/) — runnable scripts.
@@ -440,7 +439,7 @@ retrieve-then-generate pipeline end to end.
 **Rejected / deferred:**
 - Generation-layer evaluation/UI — Ragas/Phoenix own it.
 
-Full shipped/blocked/rejected detail: [`QUEUE_STATUS.md`](QUEUE_STATUS.md).
+Full shipped/blocked/rejected detail: [`docs/internal/QUEUE_STATUS.md`](docs/internal/QUEUE_STATUS.md).
 
 ## Contributing
 

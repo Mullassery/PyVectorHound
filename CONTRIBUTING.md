@@ -52,7 +52,7 @@ maturin develop --release
 # Run Python tests (after `pip install ".[dev]"` and/or `maturin develop` above)
 pytest tests/
 
-# Run linting (not currently enforced in CI — see ROADMAP_HONEST.md)
+# Run linting (not currently enforced in CI — see docs/internal/ROADMAP_HONEST.md)
 black pyvectorhound/ tests/
 ruff check pyvectorhound/ tests/
 mypy pyvectorhound/
@@ -116,7 +116,7 @@ Note: coverage only reports correctly if you installed with `pip install
 install ".[dev]"` will make `pytest --cov=pyvectorhound` report 0% for
 every module even though the tests are really running and passing,
 because `coverage.py` can't map the installed `site-packages` copy back
-to this source tree. See ROADMAP_HONEST.md for details, including two
+to this source tree. See docs/internal/ROADMAP_HONEST.md for details, including two
 genuinely-0%-covered modules this exposes once measured correctly.
 
 Write tests for new features:
@@ -175,7 +175,7 @@ Documentation lives at the repo root and in `docs/`:
 - `README.md` — overview, install, quick start
 - `USER_GUIDE.md` / `docs/GUIDE.md` — usage guides
 - `docs/ARCHITECTURE.md` — architecture overview
-- `ROADMAP_HONEST.md` — honest status, known gaps, and technical debt
+- `docs/internal/ROADMAP_HONEST.md` — honest status, known gaps, and technical debt
 - `CHANGELOG.md` — release history
 
 Update docs when:
