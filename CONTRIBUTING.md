@@ -13,7 +13,7 @@ Thank you for considering contributing to PyVectorHound! We welcome contribution
 
 ```bash
 # Clone the repository
-git clone https://github.com/Mullassery/PyVectorHound.git
+git clone ../PyVectorHound
 cd PyVectorHound
 
 # Create virtual environment

@@ -453,5 +453,5 @@ Share successful fixes by creating PRs to `diagnostic_kb/playbooks/`
 ## References
 
 - **Google OKF Spec:** https://github.com/GoogleCloudPlatform/knowledge-catalog
-- **PyVectorHound Docs:** https://github.com/Mullassery/PyVectorHound
+- **PyVectorHound Docs:** ../PyVectorHound
 - **Retrieval Failure Taxonomy:** See strategic vision document

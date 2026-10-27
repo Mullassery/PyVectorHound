@@ -424,4 +424,4 @@ diagnosis = hound.diagnose(
 - Read the docstrings in `pyvectorhound/hound.py`, `diagnosis.py`,
   `comparison.py`, and `scorer.py` for full API details — there is no
   separate generated API reference yet
-- Open an issue on [GitHub](https://github.com/Mullassery/PyVectorHound) for questions
+- Open an issue on [GitHub](../PyVectorHound) for questions

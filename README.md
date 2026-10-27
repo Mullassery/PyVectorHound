@@ -5,9 +5,9 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![PyPI](https://img.shields.io/pypi/v/pyvectorhound)](https://pypi.org/project/pyvectorhound/)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-blue)](https://www.python.org)
-[![Tests](https://github.com/Mullassery/PyVectorHound/actions/workflows/ci.yml/badge.svg)](https://github.com/Mullassery/PyVectorHound/actions/workflows/ci.yml)
+[![Tests](../PyVectorHound/actions/workflows/ci.yml/badge.svg)](../PyVectorHound/actions/workflows/ci.yml)
 
-> **Not to be confused with [PyAgentHound](https://github.com/Mullassery/PyAgentHound):** PyVectorHound diagnoses RAG retrieval failures; PyAgentHound traces and root-causes AI agent execution failures.
+> **Not to be confused with [PyAgentHound](../PyAgentHound):** PyVectorHound diagnoses RAG retrieval failures; PyAgentHound traces and root-causes AI agent execution failures.
 
 ## Which project do I need?
 
@@ -15,20 +15,20 @@ Part of the Mullassery open-source family. These tools have similar names — he
 
 | If you need to… | Use |
 | --- | --- |
-| Build a repository's dependency graph and match it against vulnerability advisories (Python, Rust, Node, containers) | [PyDeepMesh](https://github.com/Mullassery/PyDeepMesh) |
-| Understand *why* a Python dependency exists, who added it, and whether it is actually used | [PyDependencyCheck](https://github.com/Mullassery/PyDependencyCheck) |
-| Statically analyze a **dbt** project (risky tests, test blast radius, cost) | [PyDBTGuard](https://github.com/Mullassery/PyDBTGuard) |
-| Statically analyze **Apache Beam / Dataflow** pipelines (cost, hot keys, reliability) | [PyBeamGuard](https://github.com/Mullassery/PyBeamGuard) |
-| Validate **Airflow** DAGs and dbt runs | [PyAirflowTester](https://github.com/Mullassery/PyAirflowTester) |
-| Simulate cascading-failure **blast radius** across infrastructure, data pipelines, and AI systems | [PyBlastRadius](https://github.com/Mullassery/PyBlastRadius) |
-| Check the **quality of the data itself** at runtime (schema, drift, anomalies) | [StatGuardian](https://github.com/Mullassery/StatGuardian) |
-| Discover **devices, services, and vulnerabilities on a network** | [PyNetworkIntel](https://github.com/Mullassery/PyNetworkIntel) |
-| Discover and score **API security** risk (real traffic, agent/MCP, Cedar policy) | [PyAPICheck](https://github.com/Mullassery/PyAPICheck) |
-| Trace and root-cause **AI agent** failures | [PyAgentHound](https://github.com/Mullassery/PyAgentHound) |
-| Diagnose **RAG retrieval** failures | [PyVectorHound](https://github.com/Mullassery/PyVectorHound) |
-| Orchestrate **local, dependency-aware tasks** (DAG scheduler + content-addressed cache) | [PyTaskWireCheck](https://github.com/Mullassery/PyTaskWireCheck) |
+| Build a repository's dependency graph and match it against vulnerability advisories (Python, Rust, Node, containers) | [PyDeepMesh](../PyDeepMesh) |
+| Understand *why* a Python dependency exists, who added it, and whether it is actually used | [PyDependencyCheck](../PyDependencyCheck) |
+| Statically analyze a **dbt** project (risky tests, test blast radius, cost) | [PyDBTGuard](../PyDBTGuard) |
+| Statically analyze **Apache Beam / Dataflow** pipelines (cost, hot keys, reliability) | [PyBeamGuard](../PyBeamGuard) |
+| Validate **Airflow** DAGs and dbt runs | [PyAirflowTester](../PyAirflowTester) |
+| Simulate cascading-failure **blast radius** across infrastructure, data pipelines, and AI systems | [PyBlastRadius](../PyBlastRadius) |
+| Check the **quality of the data itself** at runtime (schema, drift, anomalies) | [StatGuardian](../StatGuardian) |
+| Discover **devices, services, and vulnerabilities on a network** | [PyNetworkIntel](../PyNetworkIntel) |
+| Discover and score **API security** risk (real traffic, agent/MCP, Cedar policy) | [PyAPICheck](../PyAPICheck) |
+| Trace and root-cause **AI agent** failures | [PyAgentHound](../PyAgentHound) |
+| Diagnose **RAG retrieval** failures | [PyVectorHound](../PyVectorHound) |
+| Orchestrate **local, dependency-aware tasks** (DAG scheduler + content-addressed cache) | [PyTaskWireCheck](../PyTaskWireCheck) |
 
-[Browse all projects →](https://github.com/Mullassery?tab=repositories)
+[Browse all projects →](../Mullassery-profile)
 
 ## What it is
 
@@ -170,7 +170,7 @@ Python version.
 > (a Rust toolchain is required) on unsupported targets:
 >
 > ```bash
-> pip install git+https://github.com/Mullassery/PyVectorHound.git
+> pip install git+../PyVectorHound
 > ```
 
 ## Quick start
@@ -448,7 +448,7 @@ Full shipped/blocked/rejected detail: [`docs/internal/QUEUE_STATUS.md`](docs/int
 ## Contributing
 
 ```bash
-git clone https://github.com/Mullassery/PyVectorHound.git
+git clone ../PyVectorHound
 cd PyVectorHound
 pip install maturin
 maturin develop --release   # builds the Rust extension in place
@@ -464,14 +464,14 @@ have seen far less real-world use than the core `Hound`/`Diagnosis` path.
 
 Other tools from the same family, for adjacent parts of the RAG/LLM stack:
 
-- [PyAgentHound](https://github.com/Mullassery/PyAgentHound) — debug AI systems by tracing execution, detecting failures, identifying root causes, and explaining bad agent results.
-- [PyStreamPDF](https://github.com/Mullassery/PyStreamPDF) — reduce RAG costs by extracting only what matters from PDFs: selective retrieval, structure analysis, token-efficient extraction.
-- [PyStreamMCP](https://github.com/Mullassery/PyStreamMCP) — intelligence layer for AI agents: query planning, context discovery, and cost optimization.
-- [PyTokenCalc](https://github.com/Mullassery/PyTokenCalc) — count tokens and estimate LLM costs across 20+ providers before you send a request.
-- [OpenAnchor](https://github.com/Mullassery/OpenAnchor) — token intelligence middleware for multi-provider LLM usage: 6D attribution, pattern detection, recommendations, OTEL export.
-- [StatGuardian](https://github.com/Mullassery/StatGuardian) — fast, declarative data quality framework (Rust): schema validation, drift detection, anomaly detection.
+- [PyAgentHound](../PyAgentHound) — debug AI systems by tracing execution, detecting failures, identifying root causes, and explaining bad agent results.
+- [PyStreamPDF](../PyStreamPDF) — reduce RAG costs by extracting only what matters from PDFs: selective retrieval, structure analysis, token-efficient extraction.
+- [PyStreamMCP](../PyStreamMCP) — intelligence layer for AI agents: query planning, context discovery, and cost optimization.
+- [PyTokenCalc](../PyTokenCalc) — count tokens and estimate LLM costs across 20+ providers before you send a request.
+- [OpenAnchor](../OpenAnchor) — token intelligence middleware for multi-provider LLM usage: 6D attribution, pattern detection, recommendations, OTEL export.
+- [StatGuardian](../StatGuardian) — fast, declarative data quality framework (Rust): schema validation, drift detection, anomaly detection.
 
-[Browse all projects →](https://github.com/Mullassery?tab=repositories)
+[Browse all projects →](../Mullassery-profile)
 
 ## License
 

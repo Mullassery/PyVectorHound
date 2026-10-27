@@ -41,7 +41,7 @@ pip or uv
 
 ```bash
 # Clone repository
-git clone https://github.com/Mullassery/PyVectorHound.git
+git clone ../PyVectorHound
 cd pyvectorhound
 
 # Create virtual environment
@@ -675,8 +675,8 @@ curl -s http://localhost:8000/health | jq .
 
 ## Support & Resources
 
-- **Documentation**: https://github.com/Mullassery/PyVectorHound/wiki
-- **Issues**: https://github.com/Mullassery/PyVectorHound/issues
+- **Documentation**: ../PyVectorHound/wiki
+- **Issues**: ../PyVectorHound/issues
 - **Discord**: [Join Community](https://discord.gg/pyvectorhound)
 - **Email**: support@pyvectorhound.dev
 

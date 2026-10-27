@@ -1,6 +1,6 @@
 # Audit Report: pyvectorhound
 Date: 2026-10-26 | Type: Read-only systems design audit  
-Repo: https://github.com/Mullassery/PyVectorHound.git (local: /Users/georgimullassery/Desktop/Projects/pyvectorhound) | Branch: main | Status: clean
+Repo: ../PyVectorHound (local: /Users/georgimullassery/Desktop/Projects/pyvectorhound) | Branch: main | Status: clean
 
 ## Overview
 Component-level diagnostic engine for RAG retrieval failures. Sits on top of search results from vector DBs (Qdrant/Chroma/Milvus/Weaviate/pgvector) — diagnoses whether embedding quality or vector search ranking is failing. Rust core + Python bindings via PyO3/maturin.
